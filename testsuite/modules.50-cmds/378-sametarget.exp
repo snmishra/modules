@@ -182,7 +182,8 @@ setenv_path_var MODULES_LMPREREQ hb&ha/1|ha
 set ans [list]
 lappend ans [list setpath LOADEDMODULES ha/1:hb]
 lappend ans [list setpath _LMFILES_ $mp/ha/1:$mp/hb]
-set tserr "unload ha/2"
+lappend ans [list setpath MODULES_LMPREREQ hb&ha/1|ha]
+set tserr "unload hb\nunload ha/2\nload hb\n\n[msg_top_unload ha/2 {} {} hb]"
 testouterr_cmd_re sh {unload ha} $ans $tserr
 set ans [list]
 lappend ans [list setpath LOADEDMODULES ha/1:ha/2]
@@ -210,9 +211,11 @@ testouterr_cmd_re sh {unload hc} $ans $tserr
 setenv_loaded_module [list ha/1 ha/2 hd] [list $mp/ha/1 $mp/ha/2 $mp/hd]
 setenv_path_var MODULES_LMPREREQ hd&ha/1&ha
 set ans [list]
-lappend ans [list setpath LOADEDMODULES ha/1:hd]
-lappend ans [list setpath _LMFILES_ $mp/ha/1:$mp/hd]
-set tserr "unload ha/2"
+lappend ans [list setpath LOADEDMODULES ha/1]
+lappend ans [list setpath _LMFILES_ $mp/ha/1]
+lappend ans [list unsetpath MODULES_LMPREREQ]
+# ha/1 is not seen as being able to recover lost 'ha' requirement of 'hd', thus it goes DepUn
+set tserr "unload hd\nunload ha/2\n\n[msg_top_unload ha/2 hd {} {}]"
 testouterr_cmd_re sh {unload ha} $ans $tserr
 set ans [list]
 lappend ans [list setpath LOADEDMODULES ha/1:ha/2]
@@ -264,7 +267,7 @@ set ans [list]
 lappend ans [list setpath LOADEDMODULES ha/2:hf]
 lappend ans [list setpath _LMFILES_ $mp/ha/2:$mp/hf]
 lappend ans [list setpath MODULES_LMCONFLICT hf&ha/1&ha]
-set tserr "load hf\n\n[msg_load hf [err_conflictf hf ha]]"
+set tserr "load hf\n\n[msg_load hf [err_conlof ha]]"
 testouterr_cmd_re sh {load --force hf} $ans $tserr
 set tserr [msg_load hg [err_conflict hg ha/2]]
 testouterr_cmd_re sh {load hg} ERR $tserr
@@ -272,17 +275,18 @@ set ans [list]
 lappend ans [list setpath LOADEDMODULES ha/2:hg]
 lappend ans [list setpath _LMFILES_ $mp/ha/2:$mp/hg]
 lappend ans [list setpath MODULES_LMCONFLICT hg&ha/1&ha/2&ha]
-set tserr "load hg\n\n[msg_load hg [err_conflictf hg ha/2] [err_conflictf hg ha]]"
+set tserr "load hg\n\n[msg_load hg [err_conlof ha/2] [err_conlof ha]]"
 testouterr_cmd_re sh {load --force hg} $ans $tserr
 
 setenv_loaded_module [list ha/2 hf] [list $mp/ha/2 $mp/hf]
 setenv_path_var MODULES_LMCONFLICT hf&ha/1&ha
-set tserr [msg_load ha/3 [err_conflict ha/3 hf]]
+# evaluation is attempted prior conflict violation check
+set tserr "load ha/3\n\n[msg_load ha/3 [err_conflict ha/3 hf]]"
 testouterr_cmd_re sh {load ha} ERR $tserr
 set ans [list]
 lappend ans [list setpath LOADEDMODULES ha/2:hf:ha/3]
 lappend ans [list setpath _LMFILES_ $mp/ha/2:$mp/hf:$mp/ha/3]
-set tserr "load ha/3\n\n[msg_load ha/3 [err_conflictf ha/3 hf]]"
+set tserr "load ha/3\n\n[msg_load ha/3 [err_conlof hf]]"
 testouterr_cmd_re sh {load --force ha} $ans $tserr
 set ans [list]
 lappend ans [list setpath LOADEDMODULES hf]
@@ -299,12 +303,13 @@ testouterr_cmd_re sh {unload hf} $ans $tserr
 
 setenv_loaded_module [list ha/2 hg] [list $mp/ha/2 $mp/hg]
 setenv_path_var MODULES_LMCONFLICT hg&ha/1&ha/2&ha
-set tserr [msg_load ha/3 [err_conflict ha/3 hg]]
+# evaluation is attempted prior conflict violation check
+set tserr "load ha/3\n\n[msg_load ha/3 [err_conflict ha/3 hg]]"
 testouterr_cmd_re sh {load ha} ERR $tserr
 set ans [list]
 lappend ans [list setpath LOADEDMODULES ha/2:hg:ha/3]
 lappend ans [list setpath _LMFILES_ $mp/ha/2:$mp/hg:$mp/ha/3]
-set tserr "load ha/3\n\n[msg_load ha/3 [err_conflictf ha/3 hg]]"
+set tserr "load ha/3\n\n[msg_load ha/3 [err_conlof hg]]"
 testouterr_cmd_re sh {load --force ha} $ans $tserr
 set ans [list]
 lappend ans [list setpath LOADEDMODULES hg]

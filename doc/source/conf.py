@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Modules'
-copyright = '1996-1999 John L. Furlani & Peter W. Osel, 1998-2017 R.K.Owen, 2002-2004 Mark Lakata, 2004-2017 Kent Mein, 2016-2018 Xavier Delaruelle'
+copyright = '1996-1999 John L. Furlani & Peter W. Osel, 1998-2017 R.K.Owen, 2002-2004 Mark Lakata, 2004-2017 Kent Mein, 2016-2019 Xavier Delaruelle'
 author = ''
 
 # The version info for the project you're documenting, acts as replacement for
@@ -133,6 +133,15 @@ else:
 # so a file named "default.css" will overwrite the builtin "default.css".
 #html_static_path = ['_static']
 
+# ensure quotes and dashes are preserved and not converted to lang-specific
+# entities (fix issue#250). done by disabling `html_use_smartypants` on Sphinx
+# version older than 1.6 and by disabling `smartquotes` on newer versions.
+from sphinx import __version__ as sphinx_version
+sphinx_version_parts = [int(i) for i in sphinx_version.split('.')]
+if sphinx_version_parts[0] <= 1 and sphinx_version_parts[1] < 6:
+    html_use_smartypants = False
+else:
+    smartquotes = False
 
 # -- Options for HTMLHelp output ------------------------------------------
 

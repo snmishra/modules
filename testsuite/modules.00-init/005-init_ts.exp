@@ -70,13 +70,32 @@ proc err_conflict {mod args} {
 HINT: Might try \"module unload $args\" first."
 }
 
-proc err_conflictw {mod with} {
-    return "$::error_msgs: $mod cannot be loaded due to a conflict.
-HINT: Conflict with $with is set in $mod."
+proc err_conloi {args} {
+    set is [expr {[llength $args] > 1 ? {are} : {is}}]
+    return "$::error_msgs: Conflicting [join $args { and }] $is loading"
 }
 
-proc err_conflictf {mod with} {
-    return "$::warn_msgs: $mod conflicts with $with"
+proc err_conloif {args} {
+    set is [expr {[llength $args] > 1 ? {are} : {is}}]
+    return "$::warn_msgs: Conflicting [join $args { and }] $is loading"
+}
+
+proc err_conlo {args} {
+    set is [expr {[llength $args] > 1 ? {are} : {is}}]
+    return "$::error_msgs: Conflicting [join $args { and }] $is loaded"
+}
+
+proc err_conlof {args} {
+    set is [expr {[llength $args] > 1 ? {are} : {is}}]
+    return "$::warn_msgs: Conflicting [join $args { and }] $is loaded"
+}
+
+proc err_conun {args} {
+    return "$::error_msgs: Unload of conflicting [join $args { and }] failed"
+}
+
+proc err_conunf {args} {
+    return "$::warn_msgs: Unload of conflicting [join $args { and }] failed"
 }
 
 proc err_prereq {mod args} {
@@ -94,12 +113,62 @@ proc err_prerequn {mod args} {
 HINT: Might try \"module unload $args\" first."
 }
 
-proc err_prerequnf {mod args} {
-    return "$::warn_msgs: $mod is required by [join $args {, }]"
+proc err_deplo {args} {
+    set is [expr {[llength $args] > 1 ? {are} : {is}}]
+    return "$::error_msgs: Dependent [join $args { and }] $is loaded"
 }
 
-proc err_prereqf {mod args} {
-    return "$::warn_msgs: $mod requires [join $args { or }] loaded"
+proc err_deplof {args} {
+    set is [expr {[llength $args] > 1 ? {are} : {is}}]
+    return "$::warn_msgs: Dependent [join $args { and }] $is loaded"
+}
+
+proc err_reqlo {args} {
+    return "$::error_msgs: Load of requirement [join $args { or }] failed"
+}
+
+proc err_reqlof {args} {
+    return "$::warn_msgs: Load of requirement [join $args { or }] failed"
+}
+
+proc err_reqmis {args} {
+    return "$::error_msgs: Requirement [join $args { or }] is not loaded"
+}
+
+proc err_reqmisf {args} {
+    return "$::warn_msgs: Requirement [join $args { or }] is not loaded"
+}
+
+proc err_depun {mod} {
+    return "$::error_msgs: Unload of dependent $mod failed"
+}
+
+proc err_depunf {mod} {
+    return "$::warn_msgs: Unload of dependent $mod failed"
+}
+
+proc err_urequn {mod} {
+    return "$::warn_msgs: Unload of useless requirement $mod failed"
+}
+
+proc err_depre {mod} {
+    return "$::error_msgs: Reload of dependent $mod failed"
+}
+
+proc err_depref {mod} {
+    return "$::warn_msgs: Reload of dependent $mod failed"
+}
+
+proc err_swoff {mod} {
+    return "$::error_msgs: Unload of switched-off $mod failed"
+}
+
+proc err_swon {mod} {
+    return "$::warn_msgs: Load of switched-on $mod failed"
+}
+
+proc err_reload {mod} {
+    return "$::error_msgs: Reload of $mod failed"
 }
 
 proc moderr_minverreq {modfile minver} {
@@ -167,6 +236,12 @@ proc msg_switch {old new args} {
     return $msg
 }
 
+proc msg_reload {args} {
+    set msg "Reloading all loaded modules"
+    append msg [eval msg_block_content $args]
+    return $msg
+}
+
 proc msg_top_load {mod unlist reqlolist deprelist args} {
     if {[llength $unlist] > 0} {
         lappend args "Unloading conflict: [join $unlist]"
@@ -212,19 +287,19 @@ proc msg_top_switch {old new depunlist urequnlist unlist reqlolist deprelist arg
     return [eval msg_switch $old $new $args]
 }
 
-proc msg_top_restore {coll target unlist lolist} {
+proc msg_top_restore {coll target unlist lolist args} {
     set msg "Restoring collection $coll"
     if {$target ne {}} {
         append msg " \\\(for target \"$target\"\\\)"
     }
 
     if {[llength $unlist] > 0} {
-        lappend arglist "Unloading module: [join $unlist]"
+        lappend args "Unloading module: [join $unlist]"
     }
     if {[llength $lolist] > 0} {
-        lappend arglist "Loading module: [join $lolist]"
+        lappend args "Loading module: [join $lolist]"
     }
-    append msg [eval msg_block_content $arglist]
+    append msg [eval msg_block_content $args]
 
     return $msg
 }

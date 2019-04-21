@@ -6,6 +6,115 @@ Release notes
 This file describes changes in recent versions of Modules. It primarily
 documents those changes that are of interest to users and admins.
 
+Modules 4.2.3 (2019-03-23)
+--------------------------
+
+* Add all the module dependency-related internal information to those saved
+  prior a modulefile evaluation in order to correctly restore internal state
+  in case modulefile evaluation fails.
+* Init: in shell initialization scripts, initialize ``MANPATH`` if not set
+  with a value that preserves ``manpath`` system configuration even after
+  addition of paths to this variable by modulefiles. (fix issue#224)
+* Enable to define an entire path entry to the ``MODULEPATH`` variable which
+  corresponds to a variable reference only. (fix issue#223)
+* Cookbook: add the *modulefiles-in-git* recipe. (contribution from Scott
+  Johnson)
+* When ``module switch`` commands are found in modulefiles, track switched-off
+  modulefile as a conflict and switched-to modulefile as a requirement to
+  apply same behaviors than for ``module load`` and ``module unload`` commands
+  in modulefiles. If ``module switch`` has only one argument, do not define a
+  conflict toward switched-off modulefile. *CAUTION: it is not recommended to
+  use `module switch` command in modulefiles*. (fix issue#229)
+* When unloading a module, revert ``module switch`` commands found in
+  modulefile: switched-on module is converted to a ``module unload``, like for
+  ``module load`` command. Nothing is done for switched-off module, like for
+  ``module unload`` command. (fix issue#226)
+* For default element in a modulefile directory which is a module alias that
+  points to a modulefile, when this modulefile is loaded, it receives as
+  alternative names the eventual module aliases set on the distant directory
+  holding the alias pointing to it. (fix issue#231)
+* When unloading a module that contains ``module load`` or ``module switch``
+  commands in its modulefile, select for unload the automatically loaded
+  requirement module which has been loaded prior its dependent. (fix
+  issue#232)
+* Doc: describe Emacs settings useful for adhering to coding conventions in
+  CONTRIBUTING guide. (fix issue #233 with contribution from Ben Bowers)
+* When looking for a loaded or loading dependency requirement, select among
+  the eventual multiple candidates the closest match to the dependent module.
+* During the unload of a module, if the unload of one of its dependent (by the
+  *Dependent Unload* mechanism) fails, abort the whole unload process.
+  Exception made if the force mode is enabled. In this case failing module
+  stays loaded and the *Dependent Unload* mechanism continues with next module
+  to unload.
+* During the unload of a module, if the unload of one of its useless
+  requirements (by the *Useless Requirement Unload* mechanism) fails, keep the
+  requirements of this failing module loaded. Such error is reported as a
+  warning and it does not stop the whole unload process. (fix issue#240)
+* During the load or the unload of a module, if the unload of one of its
+  dependent (by the *Dependent Reload* mechanism) fails, abort the whole
+  unload or load process. Exception made if the force mode is enabled. In this
+  case failing module stays loaded and *Dependent Reload* mechanism continues
+  with next module to unload. This failing module is removed from the
+  *Dependent Reload* list, so it will not take part of the load phrase of the
+  mechanism. (fix issue#239)
+* During the load or the unload of a module, if the load of one of its
+  dependent (by the *Dependent Reload* mechanism) fails, abort the whole
+  unload or load process. Exception made if the force mode is enabled. In this
+  case failing module stays loaded and *Dependent Reload* mechanism continues
+  with next module to load. When the mechanism is applied during a ``switch``
+  command, force mode is enabled by default on the load phase. (fix issue#241)
+* When reloading all loaded modules with the ``reload`` sub-command, if one
+  reloading module fails to unload or load, abort the whole reload process to
+  preserve environment sanity. (fix issue#237)
+* During the unload of a module when the automated module handling mode is
+  disabled and this module declares its requirements with the ``module load``
+  modulefile command. If the unload of one of its useless requirements (by the
+  *Useless Requirement Unload* mechanism) fails, whole unload process is not
+  aborted and continue with next module to unload. (fix issue#238)
+* Contrib: add ``mtreview`` utility script that analyzes test suite log file
+  to compare actual and expected output of failed test. ``mt`` does not output
+  the full test suite logs anymore but only the information produced by
+  ``mtreview`` on failed tests.
+* Install: exclude Continuous Integration configurations from dist tarballs.
+
+
+Modules 4.2.2 (2019-02-17)
+--------------------------
+
+* Correct the *Dependent Unload* mechanism when it triggers the unload of 2
+  modules making together a requirement from another module. This module is
+  now also added to the dependent modules to unload.
+* Doc: add a cookbook section in the documentation and port there the 3
+  pre-existing recipes: *inhibit-report-info*, *top-priority-values* and
+  *unload-firstly-loaded*.
+* Doc: add a CONTRIBUTING guide.
+* Doc: fix a typo on the Python initialization example in module man page.
+* Doc: add a FAQ entry to describe the use of module from Makefile. (with
+  contribution from Robert McLay)
+* Trim any white-space, newline or ``;`` characters at the beginning or end of
+  the function body passed to set-function modulefile command.
+* Init: add recognition of the ``--auto``, ``--no-auto`` and ``--force``
+  command-line switches in fish shell completion script.
+* Init: add recognition of the ``--auto``, ``--no-auto``, ``--force``,
+  ``--paginate`` and ``--no-pager`` command-line switches in zsh shell
+  completion script.
+* When the load of a modulefile is asked but a conflict is registered against
+  this modulefile by an already loaded module, the load evaluation is now
+  performed and the conflict is checked after this evaluation. If the conflict
+  is still there, this evaluation (and the evaluation of its requirements) is
+  rolled back. (fix issue#216)
+* Init: fix ``_module_not_yet_loaded`` alias in tcsh completion script to
+  handle situation when ``noclobber`` variable is set. Also ensure actual
+  ``rm`` command is called and not an alias. (fix issue#219)
+* Fix warning message when the load of a modulefile is forced over a reflexive
+  conflict (message was reported twice).
+* When looking at the dependency of a loaded module, only consider requirement
+  loaded before dependent module (holding a prior position in the loaded
+  module list) as valid. Those loaded after dependent module are considered as
+  an unmet dependency thus they are not taking part in the *Dependent Unload*,
+  the *Useless Requirement Unload* and the *Dependent Reload* mechanisms.
+
+
 Modules 4.2.1 (2018-11-11)
 --------------------------
 

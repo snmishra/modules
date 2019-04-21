@@ -45,9 +45,9 @@ foreach cmd [list list purge reload aliases savelist] {
 # on most module commands, empty arg leads to error
 # test both empty names {} and "" on same module command
 if {$install_autohandling eq {y}} {
-testouterr_cmd "sh" "load $module/load" "ERR" [msg_load $module/load $err_emptymodname [err_prereq $module/load {}]]
+testouterr_cmd "sh" "load $module/load" "ERR" [msg_load $module/load $err_emptymodname [err_reqlo {}]]
 } else {
-testouterr_cmd "sh" "load $module/load" "ERR" [msg_load $module/load $err_emptymodname $err_emptymodname [err_prereq $module/load {}]]
+testouterr_cmd "sh" "load $module/load" "ERR" [msg_load $module/load $err_emptymodname $err_emptymodname [err_reqlo {}]]
 }
 testouterr_cmd "sh" "load $module/unload" "ERR" [msg_load $module/unload $err_emptymodname $err_emptymodname]
 
@@ -63,13 +63,16 @@ set ans [list]
 lappend ans [list setpath LOADEDMODULES "$module/swap"]
 lappend ans [list setpath _LMFILES_ "$modulepath/$module/swap"]
 lappend ans [list ERR]
-testouterr_cmd "sh" "load $module/swap" $ans [msg_switch {} bar $err_emptymodname]
+testouterr_cmd "sh" "load $module/swap" $ans "[msg_switch {} bar $err_emptymodname]"
 # switch: an empty second arg leads to one name rule
 set ans [list]
-lappend ans [list setpath LOADEDMODULES "$module/swap2"]
-lappend ans [list setpath _LMFILES_ "$modulepath/$module/swap2"]
 lappend ans [list ERR]
-testouterr_cmd_re "sh" "load $module/swap2" $ans [msg_switch bar bar "$err_path'bar'"]
+testouterr_cmd_re "sh" "load $module/swap2" $ans "[msg_switch bar bar "$err_path'bar'"]\n\n[msg_load $module/swap2 [err_reqlo bar]]"
+set ans [list]
+lappend ans [list setpath LOADEDMODULES "$module/swap3"]
+lappend ans [list setpath _LMFILES_ "$modulepath/$module/swap3"]
+lappend ans [list ERR]
+testouterr_cmd "sh" "load $module/swap3" $ans "[msg_switch {} {} $err_emptymodname]"
 foreach cmd [list use unuse] {
     set ans [list]
     lappend ans [list setpath LOADEDMODULES "$module/$cmd"]
@@ -112,18 +115,10 @@ foreach cmd [list list purge reload aliases savelist] {
 # on most module commands, empty arg leads to error
 foreach cmd [list load unload] {
     setenv_loaded_module "$module/$cmd" "$modulepath/$module/$cmd"
-    # if auto_handling is enabled 'module load' order is not treated through modulefile eval
-    # but based on prereq definition which are nil here
-    # 'module unload' order are ignored on unload mode
-    if {($cmd eq {load} && $install_autohandling eq {y}) || $cmd eq {unload}} {
-        set ans [list]
-        lappend ans [list unsetpath LOADEDMODULES]
-        lappend ans [list unsetpath _LMFILES_]
-        testouterr_cmd "sh" "unload $module/$cmd" $ans ""
-    } else {
-        # test both empty names {} and "" on same module command
-        testouterr_cmd "sh" "unload $module/$cmd" "ERR" [msg_unload $module/$cmd $err_emptymodname $err_emptymodname]
-    }
+    set ans [list]
+    lappend ans [list unsetpath LOADEDMODULES]
+    lappend ans [list unsetpath _LMFILES_]
+    testouterr_cmd "sh" "unload $module/$cmd" $ans ""
 }
 
 # for some module commands, error is not fatal and modulefile is unloaded
@@ -139,11 +134,13 @@ setenv_loaded_module "$module/swap" "$modulepath/$module/swap"
 set ans [list]
 lappend ans [list unsetpath LOADEDMODULES]
 lappend ans [list unsetpath _LMFILES_]
-lappend ans [list ERR]
-testouterr_cmd "sh" "unload $module/swap" $ans [msg_switch {} bar $err_emptymodname]
+testouterr_cmd "sh" "unload $module/swap" $ans {}
 # switch: an empty second arg leads to one name rule
 setenv_loaded_module "$module/swap2" "$modulepath/$module/swap2"
-testouterr_cmd_re "sh" "unload $module/swap2" $ans [msg_switch bar bar "$err_path'bar'"]
+testouterr_cmd_re "sh" "unload $module/swap2" $ans {}
+setenv_loaded_module "$module/swap3" "$modulepath/$module/swap3"
+testouterr_cmd_re "sh" "unload $module/swap3" $ans {}
+lappend ans [list ERR]
 foreach cmd [list use unuse] {
     setenv_loaded_module "$module/$cmd" "$modulepath/$module/$cmd"
     testouterr_cmd "sh" "unload $module/$cmd" $ans [msg_unload $module/$cmd $err_emptydirname]

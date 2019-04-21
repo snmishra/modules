@@ -259,10 +259,14 @@ testouterr_cmd_re "sh" "unload alt/sym altfoo" $ans [msg_top_unload alt/dir/2 {}
 unsetenv_loaded_module
 unsetenv_path_var MODULES_LMALTNAME
 unsetenv_path_var MODULES_LMCONFLICT
-testouterr_cmd_re "sh" "load i3" ERR [msg_load alt/8 [err_conflict alt/8 i3]]\n\n[msg_load i3 [err_prereq i3 alt/8]]
+testouterr_cmd_re "sh" "load i3" ERR [msg_load alt/8 [err_conloi i3]]\n\n[msg_load i3 [err_reqlo alt/8]]
 
 # load module whose prereq conflicts with an alternatively named module currently loading
-testouterr_cmd_re "sh" "load i4" ERR [msg_load alt/8 [err_conflictw alt/8 alt/i4]]\n\n[msg_load i4 [err_prereq i4 alt/8]]
+testouterr_cmd_re "sh" "load i4" ERR [msg_load alt/8 [err_conloi alt/i4]]\n\n[msg_load i4 [err_reqlo alt/8]]
+
+# use alternate name of alt/8 on prereq command
+testouterr_cmd_re "sh" "load i3b" ERR [msg_load alt/8 [err_conloi i3b]]\n\n[msg_load i3b [err_reqlo alt/v8]]
+testouterr_cmd_re "sh" "load i4b" ERR [msg_load alt/8 [err_conloi alt/i4b]]\n\n[msg_load i4b [err_reqlo alt/v8]]
 
 # reflexive conflict set on an alternative name
 set ans [list]
@@ -271,8 +275,13 @@ lappend ans [list setpath _LMFILES_ $mp/i5/1]
 lappend ans [list setpath MODULES_LMCONFLICT i5/1&irefcon]
 lappend ans [list setpath MODULES_LMALTNAME i5/1&irefcon]
 testouterr_cmd_re "sh" "load i5/1" $ans ""
+set ans [list]
+lappend ans [list setpath _LMFILES_ $mp/i5/1]
+lappend ans [list setpath LOADEDMODULES i5/1]
+lappend ans [list setpath MODULES_LMALTNAME i5/1&irefcon]
+lappend ans [list setpath MODULES_LMCONFLICT i5/1&irefcon]
 lappend ans [list ERR]
-testouterr_cmd_re "sh" "load i5/1 i5/2" $ans [msg_load i5/2 [err_conflict i5/2 i5/1]]
+testouterr_cmd_re "sh" "load i5/1 i5/2" $ans [msg_load i5/2 [err_conflict i5/2 irefcon]]
 
 
 # 'module load' set on an alternative name

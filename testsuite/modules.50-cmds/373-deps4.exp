@@ -143,7 +143,8 @@ lappend ans [list setpath MODULES_LMNOTUASKED "dd:df"]
 lappend ans [list setpath MODULES_LMCONFLICT "dg&db"]
 lappend ans [list setpath MODULES_LMPREREQ "df&da|db|dc|dd|de:dg&df"]
 lappend ans [list ERR]
-set tserr [list [msg_load da [err_conflictw da df]] \n[msg_load db [err_conflict db dg]] "\nload dc" "load dd" "load df" "load dg" \n[msg_top_load dg {} [list dd df] {}]]
+# as da, db and dc are not valid requirement, their load attempt output is dropped
+set tserr [list "load dd" "load df" "load dg" \n[msg_top_load dg {} [list dd df] {}]]
 testouterr_cmd_re "sh" "load dg" $ans [join $tserr "\n"]
 
 # test with alternative prereq already loaded (asked by user)
@@ -180,17 +181,11 @@ setenv_path_var MODULES_LMPREREQ "df&da|db|dc|dd|de" "dg&df"
 setenv_path_var MODULES_LMCONFLICT "dg&db"
 
 # attempt to load broken/conflicting prereq alternative
-set ans [list]
-lappend ans [list unsetpath MODULES_LMPREREQ]
-lappend ans [list setpath _LMFILES_ "$mp/dd:$mp/da"]
-lappend ans [list setpath LOADEDMODULES "dd:da"]
-lappend ans [list setpath MODULES_LMNOTUASKED "dd"]
-lappend ans [list setpath MODULES_LMCONFLICT "da&df"]
-lappend ans [list ERR]
 # dependent modules are unloaded prior "da" load but cannot be reloaded as "da" declares a conflict on them
-set tserr [list "unload dg" "unload df" "load da" \n[msg_load df [err_conflict df da]] \n[msg_load dg [err_prereq dg df]] \n[msg_top_load da {} {} [list df dg]]]
-testouterr_cmd_re "sh" "load da" $ans [join $tserr "\n"]
-testouterr_cmd_re "sh" "load db" "ERR" [msg_load db [err_conflict db dg]]
+set tserr [list "unload dg" "unload df" "load da" "load df" \n[msg_load df [err_conlo da]] \n[msg_load da [err_depre df]]]
+testouterr_cmd_re "sh" "load da" ERR [join $tserr "\n"]
+set tserr [list "load db" \n[msg_load db [err_conflict db dg]]]
+testouterr_cmd_re "sh" "load db" "ERR" [join $tserr "\n"]
 # dependent modules are unloaded prior "dc" load but as dc breaks everything is restored
 set tserr [list "unload dg" "unload df" "load dc"]
 testouterr_cmd_re "sh" "load dc" "ERR" [join $tserr "\n"]
@@ -203,15 +198,16 @@ setenv_path_var MODULES_LMCONFLICT "dg&db"
 
 # attempt to load broken/conflicting module solving missing prereq requirement
 set ans [list]
-lappend ans [list unsetpath MODULES_LMPREREQ]
-lappend ans [list setpath _LMFILES_ "$mp/da"]
 lappend ans [list setpath LOADEDMODULES "da"]
+lappend ans [list setpath _LMFILES_ "$mp/da"]
+lappend ans [list unsetpath MODULES_LMPREREQ]
 lappend ans [list setpath MODULES_LMCONFLICT "da&df"]
 lappend ans [list ERR]
 # dependent modules are unloaded prior "da" load but cannot be reloaded as "da" declares a conflict on them
-set tserr [list "unload dg" "unload df" "load da" \n[msg_load df [err_conflict df da]] \n[msg_load dg [err_prereq dg df]] \n[msg_top_load da {} {} [list df dg]]]
-testouterr_cmd_re "sh" "load da" $ans [join $tserr "\n"]
-testouterr_cmd_re "sh" "load db" "ERR" [msg_load db [err_conflict db dg]]
+set tserr [list "unload dg" "unload df" "load da" "load df" \n[msg_load df [err_conlo da]] \n[msg_load da [err_depre df]]]
+testouterr_cmd_re "sh" "load da" ERR [join $tserr "\n"]
+set tserr [list "load db" \n[msg_load db [err_conflict db dg]]]
+testouterr_cmd_re "sh" "load db" "ERR" [join $tserr "\n"]
 # dependent modules are unloaded prior "dc" load but as dc breaks everything is restored
 set tserr [list "unload dg" "unload df" "load dc"]
 testouterr_cmd_re "sh" "load dc" "ERR" [join $tserr "\n"]
@@ -248,7 +244,7 @@ testouterr_cmd_re "sh" "switch g1 g2" $ans [msg_top_switch g1 g2 {} {} {} {} g4]
 set ans [list]
 lappend ans [list setpath LOADEDMODULES "g4"]
 lappend ans [list setpath _LMFILES_ "$mp/g4"]
-testouterr_cmd_re "sh" "unload --force --no-auto g1" $ans [msg_unload g1 [err_prerequnf g1 g4]]
+testouterr_cmd_re "sh" "unload --force --no-auto g1" $ans [msg_unload g1 [err_deplof g4]]
 
 # set loaded situation where a prereq violation exists
 setenv_loaded_module [list g4] [list "$mp/g4"]
@@ -289,7 +285,7 @@ lappend ans [list setpath LOADEDMODULES "g1:g2:g3:g4"]
 lappend ans [list setpath _LMFILES_ "$mp/g1:$mp/g2:$mp/g3:$mp/g4"]
 lappend ans [list setpath MODULES_LMPREREQ "g4&g1|g2|g3"]
 lappend ans [list setpath MODULES_LMCONFLICT "g3&g2"]
-testouterr_cmd_re "sh" "load --force g3" $ans [msg_top_load g3 {} {} g4 [err_conflictf g3 g2]]
+testouterr_cmd_re "sh" "load --force g3" $ans [msg_top_load g3 {} {} g4 [err_conlof g2]]
 
 # set loaded situation where a conflict violation exists
 setenv_loaded_module [list g1 g2 g3 g4] [list "$mp/g1" "$mp/g2" "$mp/g3" "$mp/g4"]
@@ -498,14 +494,14 @@ testouterr_cmd_re "sh" "unload h50" $ans [join $tserr "\n"]
 
 # uncommon case where a requirement is loaded after a module requiring it and has been automatically loaded by some module not loaded anymore
 # (loaded from a 'module load' command in a modulefile which has been loaded in a --no-auto mode)
+# this required module (h58) will not take part of the unload process as it is loaded after its dependent
 setenv_loaded_module [list h50 h51 h52 h53 h54 h55 h56 h58] [list "$mp/h50" "$mp/h51"  "$mp/h52" "$mp/h53" "$mp/h54" "$mp/h55" "$mp/h56" "$mp/h58"] [list h58]
 setenv_path_var MODULES_LMPREREQ "h51&h50" "h52&h50" "h53&h51" "h54&h51|h57" "h55&h51&h52" "h56&h52&h58"
 set ans [list]
-lappend ans [list unsetpath LOADEDMODULES]
-lappend ans [list unsetpath _LMFILES_]
+lappend ans [list setpath LOADEDMODULES h58]
+lappend ans [list setpath _LMFILES_ $mp/h58]
 lappend ans [list unsetpath MODULES_LMPREREQ]
-lappend ans [list unsetpath MODULES_LMNOTUASKED]
-set tserr [list "unload h56" "unload h55" "unload h54" "unload h53" "unload h52" "unload h51" "unload h50" "unload h58" \n[msg_top_unload h50 [list h56 h55 h54 h53 h52 h51] h58 {}]]
+set tserr [list "unload h56" "unload h55" "unload h54" "unload h53" "unload h52" "unload h51" "unload h50" \n[msg_top_unload h50 [list h56 h55 h54 h53 h52 h51] {} {}]]
 testouterr_cmd_re "sh" "unload h50" $ans [join $tserr "\n"]
 
 # h58 has been loaded in no-auto mode, thus h56 has not been reloaded when h58 has been loaded,

@@ -16,6 +16,10 @@ COVERAGE_IFILE := $(COVERAGE_SRCFILE:.tcl=.tcl_i)
 COVERAGE_LOGFILE := $(COVERAGE_SRCFILE:.tcl=.tcl_log)
 COVERAGE_MFILE := $(COVERAGE_SRCFILE:.tcl=.tcl_m)
 
+# definitions for enhanced diff tool (to review test results)
+ICDIFF_DLSRC := https://raw.githubusercontent.com/jeffkaufman/icdiff/release-1.9.2/
+ICDIFF_CHECKSUM := 2bf052d9dfb0a46af581fc390c47774a
+
 # compatibility version-related files
 COMPAT_DIR := compat
 
@@ -160,6 +164,10 @@ ChangeLog:
 README:
 	sed -e '/^\[\!\[.*\].*/d' $@.md > $@
 
+contrib/mtreview: contrib/mtreview.in version.inc
+	$(translate-in-script)
+	chmod +x $@
+
 contrib/scripts/add.modules: contrib/scripts/add.modules.in
 	$(translate-in-script)
 
@@ -286,11 +294,12 @@ endif
 dist-tar: ChangeLog README version.inc contrib/rpm/environment-modules.spec pkgdoc
 	git archive --prefix=$(DIST_PREFIX)/ --worktree-attributes \
 		-o $(DIST_PREFIX).tar HEAD
-	cp doc/build/MIGRATING.txt  doc/build/INSTALL.txt doc/build/NEWS.txt ./
+	cp doc/build/MIGRATING.txt  doc/build/INSTALL.txt doc/build/NEWS.txt \
+		doc/build/CONTRIBUTING.txt ./
 	tar -rf $(DIST_PREFIX).tar --transform 's,^,$(DIST_PREFIX)/,' \
-		ChangeLog README MIGRATING.txt INSTALL.txt NEWS.txt version.inc \
-		doc/build/MIGRATING.txt doc/build/diff_v3_v4.txt \
-		doc/build/INSTALL.txt doc/build/NEWS.txt \
+		ChangeLog README MIGRATING.txt INSTALL.txt NEWS.txt CONTRIBUTING.txt \
+		version.inc doc/build/MIGRATING.txt doc/build/diff_v3_v4.txt \
+		doc/build/INSTALL.txt doc/build/NEWS.txt doc/build/CONTRIBUTING.txt \
 		doc/build/module.1.in doc/build/modulefile.4 \
 		contrib/rpm/environment-modules.spec
 ifeq ($(compatversion) $(wildcard $(COMPAT_DIR)),y $(COMPAT_DIR))
@@ -332,7 +341,11 @@ endif
 ifeq ($(wildcard .git) $(wildcard NEWS.rst),.git NEWS.rst)
 	rm -f NEWS.txt
 endif
+ifeq ($(wildcard .git) $(wildcard CONTRIBUTING.rst),.git CONTRIBUTING.rst)
+	rm -f CONTRIBUTING.txt
+endif
 	rm -f modulecmd.tcl
+	rm -f contrib/mtreview
 	rm -f contrib/scripts/add.modules
 	rm -f contrib/scripts/modulecmd
 	rm -f testsuite/example/.modulespath testsuite/example/modulerc
@@ -353,6 +366,7 @@ endif
 distclean: clean
 	rm -f Makefile.inc
 	rm -f site.exp
+	rm -f icdiff
 	rm -rf $(NAGELFAR_RELEASE)
 ifeq ($(wildcard .git) $(wildcard $(COMPAT_DIR)),.git $(COMPAT_DIR))
 	rm -rf $(COMPAT_DIR)
@@ -378,11 +392,18 @@ testinstall:
 	runtest --srcdir $$TESTSUITEDIR --objdir $$OBJDIR $(RUNTESTFLAGS) --tool install
 
 
+# install enhanced diff tool (to review test results)
+icdiff:
+	wget $(ICDIFF_DLSRC)$@ || true
+	echo "$(ICDIFF_CHECKSUM)  $@" | md5sum --status -c - || \
+		md5 -c $(ICDIFF_CHECKSUM) $@
+	chmod +x $@
+
 # install code coverage tool
 # download from alt. source if correct tarball not retrieved from primary location
 $(NAGELFAR):
 	wget $(NAGELFAR_DLSRC1)$(NAGELFAR_DIST) || true
-	echo "$(NAGELFAR_DISTSUM) $(NAGELFAR_DIST)" | md5sum -c --status || \
+	echo "$(NAGELFAR_DISTSUM)  $(NAGELFAR_DIST)" | md5sum --status -c - || \
 		wget -O $(NAGELFAR_DIST) $(NAGELFAR_DLSRC2)$(NAGELFAR_DIST)
 	tar xzf $(NAGELFAR_DIST)
 	rm $(NAGELFAR_DIST)

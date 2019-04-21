@@ -55,7 +55,8 @@ set err_trace "$warn_msgs: 'module-trace' command not implemented"
 lappend ans [list setpath _LMFILES_ $modulefile_tron]
 lappend ans [list setpath LOADEDMODULES $module_tron]
 lappend ans [list ERR]
-testouterr_cmd_re "ALL" "load $module_tron $module" $ans [msg_load $module_tron $err_trace]\n\n[msg_load $module [err_conflict $module trace/all_on]]
+# trace/all_on is seen evaluated during conflict/full load attempt, as it was loaded on the same "module load" command order
+testouterr_cmd_re "ALL" "load $module_tron $module" $ans [msg_load $module_tron $err_trace]\n\n[msg_load $module [err_conlo trace/all_on]]
 
 set ans [list]
 lappend ans [list setpath LOADEDMODULES "$module_troff:$module"]
@@ -80,7 +81,7 @@ lappend ans [list set testsuite yes]
 lappend ans [list setpath LOADEDMODULES "$module_tron:$module"]
 lappend ans [list setpath _LMFILES_ "$modulefile_tron:$modulefile"]
 lappend ans [list setpath MODULES_LMCONFLICT "$module&$module_tron"]
-set tserr [msg_load $module [err_conflictf $module $module_tron]]
+set tserr [msg_load $module [err_conlof $module_tron]]
 testouterr_cmd_re "sh" "load --no-auto --force $module" $ans $tserr
 
 # from this situation where conflict has been forced
@@ -144,7 +145,7 @@ lappend ans [list unset testsuite]
 lappend ans [list unsetpath MODULES_LMCONFLICT]
 testouterr_cmd "sh" "purge" $ans [msg_unload $module_tron $err_trace]
 
-testouterr_cmd_re "sh" "reload" "ERR" $err_unsatreload
+testouterr_cmd_re "sh" "reload" "ERR" [msg_reload $err_unsatreload]
 
 # from this situation where conflict has been forced (opposite order)
 setenv_loaded_module [list $module $module_tron $module_troff] [list $modulefile $modulefile_tron $modulefile_troff]
@@ -173,24 +174,26 @@ lappend ans [list unset testsuite]
 lappend ans [list unsetpath MODULES_LMCONFLICT]
 testouterr_cmd "sh" "purge" $ans [msg_unload $module_tron $err_trace]
 
-testouterr_cmd_re "sh" "reload" "ERR" $err_unsatreload
+testouterr_cmd_re "sh" "reload" "ERR" [msg_reload $err_unsatreload]
 
 # test situation where a conflict is registered and a violation attempt is made during a switch
 setenv_loaded_module [list $module $module_troff] [list $modulefile $modulefile_troff]
 setenv_path_var MODULES_LMCONFLICT "$module&$module_tron"
 
 set ans [list]
-lappend ans [list setpath LOADEDMODULES "$module"]
 lappend ans [list setpath _LMFILES_ "$modulefile"]
+lappend ans [list setpath LOADEDMODULES "$module"]
 lappend ans [list ERR]
-set tserr [msg_load $module_tron [err_conflict $module_tron $module]]
+# evaluation is attempted prior conflict violation check
+set tserr [msg_load $module_tron $err_trace [err_conflict $module_tron $module]]\n\n[msg_switch $module_troff $module_tron [err_swon $module_tron]]
 testouterr_cmd_re "sh" "switch --no-auto $module_troff $module_tron" $ans $tserr
 testouterr_cmd_re "sh" "switch --auto $module_troff $module_tron" $ans $tserr
 
 set ans [list]
 lappend ans [list setpath LOADEDMODULES "$module:$module_tron"]
 lappend ans [list setpath _LMFILES_ "$modulefile:$modulefile_tron"]
-set tserr [msg_load $module_tron [err_conflictf $module_tron $module] $err_trace]
+# evaluation is attempted prior conflict violation check
+set tserr [msg_load $module_tron $err_trace [err_conlof $module]]
 testouterr_cmd_re "sh" "switch --no-auto --force $module_troff $module_tron" $ans $tserr
 testouterr_cmd_re "sh" "switch --auto --force $module_troff $module_tron" $ans $tserr
 
@@ -202,7 +205,7 @@ set ans [list]
 lappend ans [list setpath _LMFILES_ "$modulefile_tron"]
 lappend ans [list setpath LOADEDMODULES "$module_tron"]
 lappend ans [list ERR]
-set tserr [msg_load $module [err_conflict $module $module_tron]]
+set tserr [msg_load $module [err_conflict $module $module_tron]]\n\n[msg_switch $module_troff $module [err_swon $module]]
 testouterr_cmd_re "sh" "switch --no-auto $module_troff $module" $ans $tserr
 testouterr_cmd_re "sh" "switch --auto $module_troff $module" $ans $tserr
 
@@ -211,7 +214,7 @@ lappend ans [list setpath LOADEDMODULES "$module_tron:$module"]
 lappend ans [list setpath _LMFILES_ "$modulefile_tron:$modulefile"]
 lappend ans [list set testsuite yes]
 lappend ans [list setpath MODULES_LMCONFLICT "$module&$module_tron"]
-set tserr [msg_load $module [err_conflictf $module $module_tron]]
+set tserr [msg_load $module [err_conlof $module_tron]]
 testouterr_cmd_re "sh" "switch --no-auto --force $module_troff $module" $ans $tserr
 testouterr_cmd_re "sh" "switch --auto --force $module_troff $module" $ans $tserr
 
@@ -229,7 +232,8 @@ testouterr_cmd_re sh "load $module" $ans {}
 
 setenv_loaded_module [list $module] [list $modulefile]
 setenv_path_var MODULES_LMCONFLICT $badelt $module&$module_tron
-testouterr_cmd_re sh "load $module_tron" ERR [msg_load $module_tron [err_conflict $module_tron $module]]
+# evaluation is attempted prior conflict violation check
+testouterr_cmd_re sh "load $module_tron" ERR [msg_load $module_tron $err_trace [err_conflict $module_tron $module]]
 
 set ans [list]
 lappend ans [list setpath MODULES_LMCONFLICT $badelt]
