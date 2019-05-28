@@ -21,6 +21,9 @@
 #
 ##############################################################################
 
+# ensure avail tests are made using in depth mode
+setenv_var MODULES_AVAIL_INDEPTH 1
+
 set datetime_re "\[0-9\/]{10} \[0-9:]{8}"
 
 # default symbol set by using '.version' file
@@ -39,7 +42,7 @@ set modalt_2 "loc_dv7/default&loc_dv7"
 set modulefile_2 "$modpath/$module_2"
 set modulefilere_2 "$modpathre/$module_2"
 # symbol set on directory, so directory appear on avail
-set modavail_2 "loc_dv7/2.0\\s+default\\s+"
+set modavail_2 "loc_dv7/2.0/\\s+default\\s+"
 
 # default symbol set by using '.version' file using module-version cmd
 set modsym_3 "loc_dv9/default"
@@ -131,6 +134,8 @@ foreach modsym [list $modsym_5 $modsym_6] {
 #
 #  Cleanup
 #
+
+unsetenv_var MODULES_AVAIL_INDEPTH
 
 unset datetime_re
 

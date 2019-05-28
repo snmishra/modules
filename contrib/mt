@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # MT, run specific part of the test suite
-# Copyright (C) 2018 Xavier Delaruelle
+# Copyright (C) 2018-2019 Xavier Delaruelle
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,40 +40,50 @@ fi
 
 # make target
 target=test
+testserie=modules
+setuptestfiles=(00/005 00/006 00/010 00/050 00/080)
 if [ $# -gt 0 ]; then
    if [ "$1" = "cov" ]; then
-      target=testcoverage
+      export COVERAGE=y
       shift
    elif [ "$1" = "install" ]; then
       target=testinstall
+      testserie=install
+      setuptestfiles=(00/005 00/006 00/010)
       shift
    fi
 fi
 
 if [ $# -gt 0 ]; then
-   chmod 000 testsuite/modules.*
-   chmod 755 testsuite/modules.00-init
-   chmod 000 testsuite/modules.00-init/*.exp
-   chmod 644 testsuite/modules.00-init/{005,006,010,050,080}-*.exp
-   lasti=0
-   for i in ${@}; do
+   # build list of test files to run test on
+   declare -a testfiles
+   for i in ${setuptestfiles[@]} ${@}; do
       j=${i##*/}
       i=${i%/*}
-      chmod 755 testsuite/modules.${i}*
-      if [ "$j" != "$i" ]; then
-         if [ "$i" != "00" -a "$lasti" != "$i" ]; then
-            chmod 000 testsuite/modules.${i}*/*.exp
-         fi
-         for f in testsuite/modules.${i}*/{010,999,$j}*.exp; do
-            if [ -e $f ]; then
-               chmod 644 $f
-            fi
-         done
-      elif [ "$i" == "00" ]; then
-         chmod 644 testsuite/modules.00-init/*.exp
+
+      # add all test files if passed a full section number or a test file
+      # from collection section (this section must be run entirely)
+      if [ "$j" == "$i" ] || [ "$i" == "61" ]; then
+         testfiles+=(testsuite/$testserie.${i}*/*.exp)
+      else
+         testfiles+=(testsuite/$testserie.${i}*/{010,999,$j}*.exp)
       fi
-      lasti=$i
    done
+
+   # get file name of selected test files (runtest requires .exp file name)
+   declare -a testfnames
+   for i in "${testfiles[@]}"; do
+      if [ -e $i ]; then
+         fname=${i##*/}
+         # build list of unique file names
+         if [[ ! " ${testfnames[*]} " =~ " $fname " ]]; then
+            testfnames+=($fname)
+         fi
+      fi
+   done
+
+   # pass list to make target
+   export RUNTESTFILES="${testfnames[*]}"
 fi
 
 $make contrib/mtreview
@@ -83,17 +93,25 @@ $make $target
 ret=$?
 
 # highlight failed tests
-if [ "$target" = 'testinstall' ]; then
-   contrib/mtreview install.log
-else
-   if [ -e compat/modules.log ]; then
-      contrib/mtreview compat/modules.log
+retreview=0
+for log in compat/$testserie.log $testserie.log; do
+   if [ -e $log ]; then
+      contrib/mtreview $log
+      retreview+=$?
    fi
-   contrib/mtreview modules.log
-fi
+done
 
-chmod 755 testsuite/modules.*
-chmod 644 testsuite/modules.*/*.exp
+# testsuite failed but no failure found by mtreview
+if [ $ret -ne 0 ] && [ $retreview -eq 0 ]; then
+   for log in compat/$testserie.log $testserie.log; do
+      # output full log content as review did not found the issue
+      if [ -e $log ]; then
+         echo "### $log ####################################"
+         cat $log
+         echo "##############################################################"
+      fi
+   done
+fi
 
 exit $ret
 # vim:set tabstop=3 shiftwidth=3 expandtab autoindent:

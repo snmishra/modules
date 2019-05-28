@@ -5,6 +5,7 @@
 baseprefix := @baseprefix@
 prefix := @prefix@
 bindir := @bindir@
+libdir := @libdir@
 libexecdir := @libexecdir@
 etcdir := @etcdir@
 initdir := @initdir@
@@ -12,6 +13,7 @@ modulefilesdir := @modulefilesdir@
 datarootdir := @datarootdir@
 mandir := @mandir@
 docdir := @docdir@
+vimdatadir := @vimdatadir@
 
 # versioning mode installation
 versioning := @versioning@
@@ -33,6 +35,10 @@ quarantinevars := @quarantinevars@
 compatversion := @compatversion@
 EXEEXT := @EXEEXT@
 
+# install Modules Tcl extension library
+libtclenvmodules := @libtclenvmodules@
+SHLIB_SUFFIX := @SHLIB_SUFFIX@
+
 # enable or not some specific definition
 setmanpath := @setmanpath@
 appendmanpath := @appendmanpath@
@@ -40,6 +46,7 @@ setbinpath := @setbinpath@
 appendbinpath := @appendbinpath@
 setdotmodulespath := @setdotmodulespath@
 docinstall := @docinstall@
+vimaddons  := @vimaddons@
 examplemodulefiles := @examplemodulefiles@
 
 # able to build documentation?
@@ -53,8 +60,23 @@ usemanpath := @usemanpath@
 pager := @pager@
 pageropts := @pageropts@
 
+# color setup
+color := @color@
+darkbgcolors := @darkbgcolors@
+lightbgcolors := @lightbgcolors@
+termbg := @termbg@
+
 # automated modules handling
 autohandling := @autohandling@
+
+# in depth avail search
+availindepth := @availindepth@
+
+# allow extra siteconfig
+extrasiteconfig := @extrasiteconfig@
+
+# unload lastly or firstly loaded module matching
+unloadmatchorder := @unloadmatchorder@
 
 # command location
 TCLSH := @TCLSH@

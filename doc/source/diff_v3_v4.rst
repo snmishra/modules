@@ -58,12 +58,13 @@ Module Sub-Commands
 ^^^^^^^^^^^^^^^^^^^
 On compatibility version, paths composing the **MODULEPATH** environment variable may contain reference to environment variable. These variable references are resolved dynamically when **MODULEPATH** is looked at during module sub-command action like **avail**. This feature was missing on Modules ``4.0`` but it has been re-introduced on Modules ``4.1``.
 
+**update**
+
+ This module sub-commands is not supported on Modules 4.
 
 **clear**
 
-**update**
- 
- These module sub-commands are not supported on Modules 4.
+ This command line switch was not supported starting Modules version ``4.0`` but reintroduced starting version ``4.3``. It now takes into account the **--force** command-line switch to skip confirmation dialog.
 
 **refresh**
  
@@ -111,7 +112,7 @@ On compatibility version, paths composing the **MODULEPATH** environment variabl
 
  Starting with version ``4.1``, content sent to the ``stdout`` channel during a *modulefile* interpretation is spooled to effectively transmit this content to stdout after rendering the environment changes made by this modulefile.
 
- When the specified module to unload matches multiple loaded modules, Modules 4 unloads lastly loaded module whereas compatibility version unloads firstly loaded module.
+ When the specified module to unload matches multiple loaded modules, Modules 4 unloads lastly loaded module whereas compatibility version unloads firstly loaded module. A configuration option ``unload_match_order`` has been introduced in version ``4.3`` and it enables to restore the behavior of compatibility version when it is set to ``returnfirst``.
 
 **switch**
  
@@ -285,6 +286,14 @@ Command line switches
 
  These command line switches appeared on version ``4.2`` and are not supported on compatibility version.
 
+**--indepth**
+
+**--no-indepth**
+
+**--color**
+
+ These command line switches appeared on version ``4.3`` and are not supported on compatibility version.
+
 
 Module Sub-Commands
 ^^^^^^^^^^^^^^^^^^^
@@ -339,6 +348,10 @@ Starting with version ``4.1``, **module** function for all scripting languages, 
 **info-loaded**
 
  These module sub-commands appeared on version ``4.1`` and are not supported on compatibility version.
+
+**config**
+
+ This module sub-command appeared on version ``4.3`` and is not supported on compatibility version.
  
 **avail**
 
@@ -399,6 +412,20 @@ Environment
 **MODULES_LMPREREQ**
 
  These environment variables appeared on version ``4.2`` and are not supported on compatibility version.
+
+**MODULES_AVAIL_INDEPTH**
+
+**MODULES_COLOR**
+
+**MODULES_COLORS**
+
+**MODULES_SITECONFIG**
+
+**MODULES_TERM_BACKGROUND**
+
+**MODULES_UNLOAD_MATCH_ORDER**
+
+ These environment variables appeared on version ``4.3`` and are not supported on compatibility version.
 
 
 Modules Specific Tcl Commands

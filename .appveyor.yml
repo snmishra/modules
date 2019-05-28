@@ -18,9 +18,8 @@ install:
   # install dependencies, make and sed are already installed in msys2 and cygwin environments
   # also install shells and script interpreter for test purpose
   # no availability of R on MSYS2 platform
-  - if "%BUILD_PLATFORM%" == "msys" (%CMD_DIR%\bash -lc "pacman --noconfirm --noprogressbar -S tcl dejagnu python ruby cmake zsh tcsh mksh fish")
-  # temporarily stop to test against R on Cygwin platform (see https://github.com/appveyor/ci/issues/2913)
-  - if "%BUILD_PLATFORM%" == "cygwin" (%CMD_DIR%\bash -lc "/setup-x86_64.exe -qnNdO -P tcl,dejagnu,ruby,cmake,zsh,tcsh,mksh,fish")
+  - if "%BUILD_PLATFORM%" == "msys" (%CMD_DIR%\bash -lc "pacman --noconfirm --noprogressbar -S tcl dejagnu python ruby cmake zsh tcsh mksh fish gcc autoconf")
+  - if "%BUILD_PLATFORM%" == "cygwin" (%CMD_DIR%\bash -lc "/setup-x86_64.exe -qnNdO -P tcl,dejagnu,ruby,cmake,zsh,tcsh,mksh,fish,R,tcl-devel,gcc-core,autoconf")
 
 build_script:
   - path %CMD_DIR%;%PATH%
@@ -32,5 +31,9 @@ test_script:
   - if "%BUILD_PLATFORM%" == "msys" (bash -c "contrib/mt install")
   # must add /usr/lib/lapack to PATH for /usr/lib/R/library/stats/libs/stats.dll
   - if "%BUILD_PLATFORM%" == "cygwin" (bash -c "PATH=/usr/lib/lapack:$PATH contrib/mt install")
+
+after_test:
+  - path %CMD_DIR%;%PATH%
+  - bash -c "make uninstall"
 
 # vim:set tabstop=2 shiftwidth=2 expandtab autoindent:

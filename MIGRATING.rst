@@ -8,6 +8,188 @@ Modules. It provides an overview of the new features and changed behaviors
 that will be encountered when upgrading.
 
 
+Migrating from v4.2 to v4.3
+===========================
+
+This new version is backward-compatible with v4.2 and primarily fixes bugs and
+adds new features.
+
+New features
+------------
+
+Version 4.3 introduces new functionalities that are described in this section.
+
+Modulepath rc file
+^^^^^^^^^^^^^^^^^^
+
+A ``.modulerc`` file found at the root of an enabled modulepath directory is
+now evaluated when modulepath is walked through to locate modulefiles. This
+modulepath rc file gives for instance the ability to define module alias whose
+name does not correspond to any module directory in this modulepath. Thus this
+kind of module alias would not be found unless if it is defined at the
+modulepath global scope.
+
+Further I/O operations optimization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Additional work has been performed to save a significant number of filesystem
+I/O operations made to search and evaluate modulefiles.
+
+When fully read, the content of a modulefile is now cached in memory to avoid
+new I/O operations in case this modulefile should be read one more time during
+the same module command evaluation.
+
+Except for ``path``, ``paths``, ``list``, ``avail`` and ``aliases`` module
+commands always fully read a modulefile whether its full content is needed or
+just its header to verify its validity. This way modulefiles are only read
+once on commands that first check modulefile validity then read again valid
+files to get their full content.
+
+Last but not least, Modules Tcl extension library is introduced to extend the
+Tcl language in order to provide more optimized I/O commands to read a file or
+a directory content than native Tcl commands do. This library is built and
+enabled in ``modulecmd.tcl`` script with ``--enable-libtclenvmodules``
+configure argument (it is enabled by default). As this library is written in
+C, it must be compiled and ``--with-tcl`` or ``--with-tclinclude`` configure
+arguments may be used to indicate where to find Tcl development files.
+
+Modules Tcl extension library greatly reduces the number of filesystem I/O
+operations by removing unneeded ``ioctl``, ``fcntl`` and ``lstat`` system
+calls done (by Tcl ``open`` command) to read each modulefile. Directory
+content read is also improved by fetching hidden and regular files in one
+pass. Moreover ``.modulerc`` and ``.version`` read access is tested only if
+these files are found in the directory.
+
+Colored output
+^^^^^^^^^^^^^^
+
+The ability to graphically enhance some part of the produced output has been
+added to improve readability. Among others, error, warning and info message
+prefixes can be colored as well as modulepath, module alias and symbolic
+version.
+
+Color mode can be set to ``never``, ``auto`` or ``always``. When color mode is
+set to ``auto``, output is colored only if the standard error output channel
+is attached to a terminal.
+
+Default color mode could be controlled at configure time with the
+``--enable-color`` and the ``--disable-color`` option, which respectively
+correspond to the ``auto`` and ``never`` color mode. This default mode could
+be superseded with the ``MODULES_COLOR`` environment variable and the
+``--color`` command-line switch.
+
+Color to apply to each element can be controlled with the ``MODULES_COLORS``
+environment variable or the ``--with-dark-background-colors`` and
+``--with-light-background-colors`` configure options. These variable and
+options take as value a colon-separated list in the same fashion ``LS_COLORS``
+does. In this list, output item that should be highlighted is designated by
+a key which is associated to a `Select Graphic Rendition (SGR) code`_.
+
+.. _Select Graphic Rendition (SGR) code: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
+
+The ``MODULES_TERM_BACKGROUND`` environment variable and the
+``--with-terminal-background`` configure option help Modules to determine if
+the color set for dark background or the color set for light background should
+be used to color output in case no specific color set is defined with the
+``MODULES_COLORS`` variable.
+
+Output items able to be colorized and their relative key are: highlighted
+element (``hi``), debug information (``db``), tag separator (``se``); Error
+(``er``), warning (``wa``), module error (``me``) and info (``in``) message
+prefixes; Modulepath (``mp``), directory (``di``), module alias (``al``),
+module symbolic version (``sy``), module ``default`` version (``de``) and
+modulefile command (``cm``).
+
+For instance the default color set for a terminal with dark background is
+defined to::
+
+    hi=1:db=2:se=2:er=91:wa=93:me=95:in=94:mp=1;94:di=94:al=96:sy=95:de=4:cm=92
+
+When colored output is enabled and a specific graphical rendition is defined
+for module *default* version, the ``default`` symbol is omitted and instead
+the defined graphical rendition is applied to the relative modulefile. When
+colored output is enabled and a specific graphical rendition is defined for
+module alias, the ``@`` symbol is omitted.
+
+Configure modulecmd with config sub-command
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The **config** sub-command has been added to `module` to help getting or
+setting the **modulecmd.tcl** options. With no additional command-line
+argument, this sub-command reports the current value of all existing options
+with a mention to indicate if this value has been overridden from a
+command-line switch or from an environment variable.
+
+See the description of this sub-command in the :ref:`module(1)` man page for a
+complete reference on existing configuration options.
+
+Most of the options can be altered by passing the option name and a value to
+the sub-command. Setting an option by this mean overrides its default value,
+set at installation time in **modulecmd.tcl** script, by defining the
+environment variable which supersedes this default.::
+
+    $ module config auto_handling 1
+    $ module config auto_handling
+    Modules Release 4.3.0 (2019-XX-XX)
+    
+    - Config. name ---------.- Value (set by if default overridden) ---------------
+    auto_handling             1 (env-var)
+
+When command-line switch ``--reset`` and an option name is passed to the
+**config** sub-command, it restores default value for configuration option by
+unsetting related environment variable.
+
+With command-line switch ``--dump-state``, the **config** sub-command reports,
+in addition to currently set options, the current state of **modulecmd.tcl**
+script and Modules-related environment variables. Providing the output of the
+``module config --dump-state`` command when submitting an issue to the Modules
+project will help to analyze the situation.
+
+New sub-commands, command-line switches and environment variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* The **avail** sub-command gets two new command-line switches: **--indepth**
+  and **--no-indepth**. These options control whether search results should
+  recursively include or not modulefiles from directories matching search
+  query. Shell completion scripts have been updated to complete available
+  modulefiles in the no in depth mode.
+
+* The **MODULES_AVAIL_INDEPTH** environment variable defines if the **avail**
+  sub-command should include or exclude by default the modulefiles from
+  directories matching search query. Its value is superseded by the use of the
+  **--indepth** and **--no-indepth** command-line switches.
+
+* The **clear** sub-command, which was available on Modules version 3.2, has
+  been reintroduced. This sub-command resets the Modules runtime information
+  but does not apply further changes to the environment at all. This
+  sub-command now leverages the **--force** command-line switch to skip its
+  confirmation dialog.
+
+* The **MODULES_SITECONFIG** environment variable defines an additional
+  siteconfig script which is loaded if it exists after the siteconfig script
+  configured at build time in ``modulecmd.tcl``. This ability is enabled by
+  default and could be disabled with the ``--disable-extra-siteconfig``
+  configure option.
+
+* The **config** sub-command has been introduced. See `Configure modulecmd
+  with config sub-command`_ section for detailed information.
+
+* The **MODULES_UNLOAD_MATCH_ORDER** environment variable sets whether the
+  firstly or the lastly loaded module should be selected for unload when
+  multiple loaded modules match unload request. Configure option
+  ``--with-unload-match-order`` defines this setting which can be superseded
+  by the environment variable. By default, lastly loaded module is selected
+  and it is recommanded to keep this behavior when used modulefiles express
+  dependencies between each other.
+
+
+Further reading
+---------------
+
+To get a complete list of the changes between Modules v4.1 and v4.2,
+please read the :ref:`NEWS` document.
+
+
 Migrating from v4.1 to v4.2
 ===========================
 

@@ -6,6 +6,198 @@ Release notes
 This file describes changes in recent versions of Modules. It primarily
 documents those changes that are of interest to users and admins.
 
+Modules 4.3.0 (2019-XX-XX)
+--------------------------
+
+* Introduce Vim addon files to highlight the modulefile syntax. Installation
+  of these files, which is enabled by default, is controlled by the
+  ``--enable-vim-addons`` and ``--vimdatadir`` configure options.
+  (contribution from Felix Neumärker)
+* If modulefile is fully read, cache the content read and the file header
+  computed to avoid another file read if the same modulefile need to be read
+  multiple times.
+* Except for path, paths, list, avail and aliases module commands always fully
+  read a modulefile whether its full content is needed or just its header to
+  verify its validity. Proceed this way to only read file once on commands
+  that first just check modulefile validity then read again valid files to get
+  their full content.
+* Introduce Modules Tcl extension library (written in C) to extend Tcl
+  language in order to provide more optimized I/O commands to read a file or a
+  directory content than native Tcl commands do.
+* Install: add ``--libdir``, ``--enable-libtclenvmodules``, ``--with-tcl`` and
+  ``--with-tclinclude`` options to configure script to control
+  libtclenvmodules build and installation.
+* When an error is caught during modulecmd.tcl first initialization steps,
+  ensure the error report facility is initialized to render error message.
+* When looking for modulefiles in enabled modulepaths, take ``.modulerc`` file
+  found at the root of a modulepath directory into account. Which means these
+  rc files are now evaluated like global rc files and can be used to define
+  module aliases targeting modulefiles stored in the underlying file tree.
+* Correctly get available default (-d) and latest (-L) version whether search
+  pattern is passed with an ending forward slash character or not or if it
+  contains a ``*`` wildcard character.
+* Append a forward slash character to any directory result of an avail command
+  to better distinguish these directories from regular files.
+* Introduce the ability to control whether ``avail`` command search results
+  should recursively include or not modulefiles from directories matching
+  search query by use of the ``--indepth`` and ``--no-indepth`` command-line
+  switches or the environment variable ``MODULES_AVAIL_INDEPTH``. Default
+  behavior is set at the ``./configure`` time with the
+  ``--enable-avail-indepth`` and ``--disable-avail-indepth`` switches. (fix
+  issue #150)
+* Update ``bash``, ``fish`` and ``zsh`` completion scripts to propose
+  available modulefiles in the no in depth mode.
+* Add the ability to graphically enhance some part of the produced output to
+  improve readability by the use of the ``--color`` command-line switch or the
+  ``MODULES_COLOR`` environment variable. Both accept the following values:
+  ``never``, ``auto`` and ``always``. When color mode is set to ``auto``,
+  output is colored if stderr is attached to a terminal. Default color mode
+  could be controlled at configure time with the ``--enable-color`` and the
+  ``--disable-color`` option, which respectively correspond to the ``auto``
+  and ``never`` color mode.
+* Control the color to apply to each element with the ``MODULES_COLORS``
+  environment variable or the ``--with-dark-background-colors`` and
+  ``--with-light-background-colors`` configure options. These variable and
+  options take as value a colon-separated list in the same fashion
+  ``LS_COLORS`` does. In this list, each element that should be highlighted is
+  associated to a Select Graphic Rendition (SGR) code.
+* Inform Modules of the terminal background color with the
+  ``MODULES_TERM_BACKGROUND`` environment variable or the
+  ``--with-terminal-background`` configure option, which helps to determine if
+  either the dark or light background colors should be used to color output in
+  case no specific color set is defined with the ``MODULES_COLORS``.
+* Color prefix tag of debug, error, warning, module error and info messages.
+* Highlight the modulefile or collection name when reporting messages for a
+  an action made over this modulefile or collection.
+* Color the modulepaths reported on a ``use`` command.
+* Highlight title of separator lines or column name of table header.
+* Color modulepaths, directories, aliases and symbols reported by the
+  ``avail``, ``aliases``, ``list``, ``whatis`` and ``search`` commands.
+* When color mode is enabled and module aliases are colored, do not associate
+  them a ``@`` tag as the color already distinguish them from regular
+  modulefile.
+* When color mode is enabled and a Select Graphic Rendition (SGR) code is set
+  for the ``default`` modulefile symbol, apply this SGR code to the modulefile
+  name instead of associating it the ``default`` symbol tag.
+* Highlight matched module search query string among ``avail``, ``whatis`` and
+  ``search`` command results.
+* Highlight the modulefile and collection full path name on ``display``,
+  ``help``, ``test`` and ``saveshow`` command reports.
+* Color modulefile Tcl commands set in a modulefile on a ``display`` command
+  report.
+* Color module commands set in a collection on a ``saveshow`` command report.
+* Re-introduce ``clear`` sub-command. (fix issue #203)
+* Leverage ``--force`` command-line switch on ``clear`` sub-command to skip
+  confirmation dialog. (fix issue #268)
+* Init: improve readability of variable definition operations by writing one
+  definition operation per line rather having multiple commands on a single
+  line like ``VAR=val; export VAR``. (fix issue #225)
+* Add the ability to define a site-specific configuration file with an
+  environment variable: ``MODULES_SITECONFIG``. When set, the script file
+  pointed by the variable is sourced (if readable) after the site-specific
+  configuration file initially defined in ``modulecmd.tcl``. (contribution
+  from Ben Bowers, fix issue #234)
+* Doc: add description in the module.1 man page of ``MODULERCFILE`` in the
+  environment section and ``siteconfig.tcl`` in the files section.
+* Correctly escape ``?`` character in shell alias. (fix issue #275)
+* When resolving the enabled list of modulepaths, ensure resolved path
+  entries are unique. (fix issue #274)
+* Install: add to the configure script the ``--enable-extra-siteconfig`` and
+  ``--disable-extra-siteconfig`` options to allow or forbid the definition of
+  a site-specific configuration script controlled with the
+  ``MODULES_SITECONFIG`` environment variable.
+* Install: provide at installation time a bare site-specific configuration
+  script in designated ``etcdir`` if no pre-existing ``siteconfig.tcl`` file
+  is found at designated location.
+* Introduce the ``config`` sub-command to get and set ``modulecmd.tcl``
+  options and to report its current state.
+* Contrib: update ``createmodule.py`` script to support execution from the
+  *cmd* shell. (contribution from Jacques Raphanel, fix issue #270)
+* Add the ability to configure when unloading a module and multiple loaded
+  modules match request if firstly loaded module should be choosen or lastly
+  loaded module. Configure option ``--with-unload-match-order`` defines this
+  setting which can be superseded with the ``MODULES_UNLOAD_MATCH_ORDER``
+  environment variable. This variable can be set with the option
+  ``unload_match_order`` on the ``config`` sub-command. By default, lastly
+  loaded module is selected. It is recommanded to keep this behavior when the
+  modulefiles used express dependencies between each other.
+
+
+Modules 4.2.4 (2019-04-26)
+--------------------------
+
+* Better track each module evaluation and the context associated to it in
+  order to report a more accurate information on the additional modules
+  loaded or unloaded when proceeding the main evaluation request. (fix issue
+  #244, #245, #246, #247 and #248)
+* Doc: preserve quotes and dashes when making HTML docs. (fix issue #250 with
+  contribution from Riccardo Coccioli)
+* Fix hanging ``list`` sub-command when terminal width is equal to the single
+  column text width to be printed. (contribution from Jesper Dahlberg)
+* During an additional evaluation triggered by an automated module handling
+  mechanism, ensure warning and error messages are reported under the message
+  block of the main evaluation. (fix issue #252)
+* During the unload of a module when the automated module handling mode is
+  disabled, report a warning message for each unload of a useless requirement
+  that fails as done when the automated module handling mode is enabled. (fix
+  issue #253)
+* When multiple modules are listed on a ``prereq`` command, drop the output of
+  those modules that fails to load (by the *Requirement Load* automated
+  mechanism) to only keep the output of the module whose load succeed. (fix
+  issue #254)
+* Fix ``switch`` sub-command when the switched-off module cannot be unloaded
+  when other loaded modules depend on it. Whole switch process is failed and
+  no load of the switched-on module is attempted. (fix issue #251)
+* When switching modules, report failure of switched-off module unload or
+  switched-on module load under the message block of the switch action. A
+  failed switched-off module unload is reported as an error, as it aborts the
+  switch evaluation, whereas a failed switched-on module load is reported as a
+  warning. (fix issue #255)
+* When a module requirement is seen missing but the load of this module was
+  attempted, report a more specific error or warning message to let user
+  understand that the load of the requirement was attempted but failed. (fix
+  issue #257)
+* When loading a module, report any missing requirement on the message
+  reporting block corresponding to this module load. This warning or error
+  message comes in addition to the eventual *Requirement Load* message
+  reported under the message block of the main evaluation. (fix issue #258)
+* When unloading a module which has some dependent module still loaded,
+  produce a more specific error or warning message if an evaluation of these
+  dependent modules has been realized or if the unload of the required module
+  is forced. (fix issue #259)
+* When a conflicting module is seen loaded but the unload of this module was
+  attempted, report a *Conflict Unload* error or warning message toward the
+  main evaluation message block. (fix issue #261)
+* When loading a module, report any loaded conflict on the message reporting
+  block corresponding to this module load. This warning or error message comes
+  in addition to the eventual *Conflict Unload* message reported under the
+  message block of the main evaluation. (fix issue #261)
+* Correctly report loading state of conflicting module. (fix issue #262)
+* Adapt warning, error and info messages relative to the *Dependent Reload*
+  mechanism to distinguish the unload phase from the load (reload) phase of
+  this mechanism. In the automated module handling summary report, unloaded
+  modules via this mechanism are reported in the *Unloading dependent* list
+  and modules reloaded afterward are reported against the *Reloading
+  dependent* list. (fix issue #263)
+* When the automated module handling mode is disabled, do not attempt to load
+  a requirement expressed in a modulefile with a ``module load`` command, if
+  this requirement is already loaded or loading.
+* Skip load or unload evaluation of a module whose respectively load or unload
+  was already attempted but failed. If this second evaluation attempt occurs
+  within the same main evaluation frame. (fix issue #264)
+* When reloading modules through the *Dependent Reload* automated mechanism,
+  prevent modules to automatically load of other modules with the ``module
+  load`` modulefile command, as it is done for the ``prereq`` command. (fix
+  issue #265)
+* Raise an error when an invalid option is set on ``append-path``,
+  ``prepend-path`` or ``remove-path`` modulefile command. (fix issue #249)
+* Zsh initializes by default the ``MANPATH`` environment variable to an empty
+  value when it starts. To preserve ``manpath`` system configuration even
+  after addition to this variable by modulefiles, set ``MANPATH`` variable to
+  ``:`` if found empty. (improve fix for issue #224)
+* Doc: provide a short installation guideline in README file. (fix issue #230)
+
+ 
 Modules 4.2.3 (2019-03-23)
 --------------------------
 

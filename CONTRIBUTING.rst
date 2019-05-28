@@ -28,7 +28,8 @@ Reporting issues
   us identify the issue.
 * Describe what actually happened. Run the ``module`` command in ``--debug``
   mode and include all the debug output obtained in your report.
-* List your Modules and Tcl versions.
+* Provide the current configuration and state of your Modules installation by
+  running the ``module config --dump-state`` command.
 * Provide the name and content of the modulefiles you try to manipulate.
 
 .. _minimal, complete, and verifiable example: https://stackoverflow.com/help/mcve
@@ -85,13 +86,13 @@ Generating a report of lines that do not have test coverage can indicate where
 to start contributing or what your tests should cover for the code changes you
 submit.
 
-Run ``make testcoverage`` which will automatically setup the `Nagelfar`_ Tcl
-code coverage tool in your ``modules`` development directory. Then the full
-testsuite will be run in coverage mode and a ``modulecmd.tcl_m`` annotated
-script will be produced::
+Run ``make test COVERAGE=y`` which will automatically setup the `Nagelfar`_
+Tcl code coverage tool in your ``modules`` development directory. Then the
+full testsuite will be run in coverage mode and a ``modulecmd-test.tcl_m``
+annotated script will be produced::
 
-   make testcoverage
-   # then open modulecmd.tcl_m and look for ';# Not covered' lines
+   make test COVERAGE=y
+   # then open modulecmd-test.tcl_m and look for ';# Not covered' lines
 
 .. _Nagelfar: http://nagelfar.sourceforge.net/
 

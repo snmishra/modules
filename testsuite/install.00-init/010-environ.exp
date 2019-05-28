@@ -49,10 +49,28 @@ if {[info exists install_quarlist]} {
    }
 }
 
+# clean any automated handling mode configuration
+catch {unset env(MODULES_AUTO_HANDLING)}
+
+# clean any in depth mode configuration
+catch {unset env(MODULES_AVAIL_INDEPTH)}
+
+# clean any unload match order config
+catch {unset env(MODULES_UNLOAD_MATCH_ORDER)}
+
 # clean any pager configuration
 catch {unset env(LESS)}
 catch {unset env(PAGER)}
 catch {unset env(MODULES_PAGER)}
+
+# clean any additional siteconfig set
+catch {unset env(MODULES_SITECONFIG)}
+
+# clean any color configuration
+catch {unset env(MODULES_COLORS)}
+catch {unset env(MODULES_TERM_BACKGROUND)}
+# ensure colored output is disabled by default
+set env(MODULES_COLOR) never
 
 # clean any versioning configuration
 catch {unset env(MODULE_VERSION)}

@@ -1,20 +1,36 @@
 #
 # Bash commandline completion (bash 3.0 and above)
 #
+_module_comgen_words_and_files() {
+    local k=0
+    local setnospace=1
+    # do not append space to word completed if it is a directory (ends with /)
+    for val in $(compgen -W "$1" -- "$2"); do
+        if [ !$setnospace -a "${val: -1:1}" = '/' ]; then
+            compopt -o nospace
+            setnospace=0
+        fi
+        COMPREPLY[k++]="$val"
+    done
+}
+
 _module_avail() {
-    module avail -t 2>&1 | sed '
-        /^-\+/d; /^\s*$/d;
-        /->.*$/d;
-        /:$/d;
-        /:ERROR:/d;
-        s#^\(.*\)/\(.\+\)(.*default.*)#\1\n\1\/\2#;
-        s#(.*)$##g;
-        s#\s*$##g;
-        s#/*$##g;'
+    local cur="${1:-}"
+    # skip avail call if word currently being completed is an option keyword
+    if [ -z "$cur" -o "${cur:0:1}" != '-' ]; then
+        module avail --color=never -t --no-indepth $cur 2>&1 | sed '
+            /^-\+/d; /^\s*$/d;
+            /->.*$/d;
+            /:$/d;
+            /:ERROR:/d;
+            s#^\(.*\)/\(.\+\)(.*default.*)#\1\n\1\/\2#;
+            s#(.*)$##g;
+            s#\s*$##g;'
+    fi
 }
 
 _module_savelist() {
-    module savelist -t 2>&1 | sed '
+    module savelist --color=never -t 2>&1 | sed '
         /No named collection\.$/d;
         /Named collection list$/d;
         /:$/d;
@@ -22,7 +38,7 @@ _module_savelist() {
 }
 
 _module_not_yet_loaded() {
-    _module_avail | sort | sed -E "\%^(${LOADEDMODULES//:/|})$%d"
+    _module_avail ${1:-} | sort | sed -E "\%^(${LOADEDMODULES//:/|})$%d"
 }
 
 _module_long_arg_list() {
@@ -30,13 +46,13 @@ _module_long_arg_list() {
 
     if [[ ${COMP_WORDS[COMP_CWORD-2]} == sw* ]]
     then
-        COMPREPLY=( $(compgen -W "$(_module_not_yet_loaded)" -- "$cur") )
+        _module_comgen_words_and_files "$(_module_not_yet_loaded $cur)" "$cur"
         return
     fi
     for ((i = COMP_CWORD - 1; i > 0; i--))
         do case ${COMP_WORDS[$i]} in
         add|load)
-            COMPREPLY=( $(compgen -W "$(_module_not_yet_loaded)" -- "$cur") )
+            _module_comgen_words_and_files "$(_module_not_yet_loaded $cur)" "$cur"
             break;;
         rm|del|remove|unload|switch|swap)
             COMPREPLY=( $(IFS=: compgen -W "${LOADEDMODULES}" -- "$cur") )
@@ -92,23 +108,30 @@ _module() {
 
     COMPREPLY=()
 
-    cmds="add apropos aliases avail append-path del display help initadd\
-        initclear initlist initprepend initrm is-loaded is-saved is-used\
-        is-avail info-loaded keyword list load path paths purge prepend-path\
-        refresh reload restore rm remove remove-path save savelist saveshow\
-        saverm search show source swap switch test unload unuse use whatis"
+    cmds="add apropos aliases avail append-path clear config del display help\
+        initadd initclear initlist initprepend initrm is-loaded is-saved\
+        is-used is-avail info-loaded keyword list load path paths purge\
+        prepend-path refresh reload restore rm remove remove-path save\
+        savelist saveshow saverm search show source swap switch test unload\
+        unuse use whatis"
 
-    opts="-D -h -V --debug --help --version --paginate --no-pager"
+    opts="-D -h -V --debug --help --version --paginate --no-pager --color --color="
     load_opts="--auto --no-auto --force -f"
     list_opts="-l -t --long --terse"
+    clear_opts="--force -f"
     path_opts="-d --delim --duplicates"
     rm_path_opts="-d --delim --index"
-    avail_opts="-d -L -l -t --default --latest --long --terse"
+    avail_opts="-d -L -l -t --default --latest --long --terse --indepth --no-indepth"
+    config_opts="--dump-state --reset allow_extra_siteconfig contact auto_handling\
+        avail_indepth collection_pin_version collection_target color colors\
+        extra_siteconfig pager rcfile run_quarantine silent_shell_debug term_background\
+        unload_match_order"
 
     case "$prev" in
-    add|load)       COMPREPLY=( $(compgen -W "$load_opts $(_module_not_yet_loaded)" -- "$cur") );;
-    avail)          COMPREPLY=( $(compgen -W "$avail_opts $(_module_avail)" -- "$cur") );;
+    add|load)       _module_comgen_words_and_files "$load_opts $(_module_not_yet_loaded $cur)" "$cur";;
+    avail)          _module_comgen_words_and_files "$avail_opts $(_module_avail $cur)" "$cur";;
     list|savelist)  COMPREPLY=( $(compgen -W "$list_opts" -- "$cur") );;
+    clear)  COMPREPLY=( $(compgen -W "$clear_opts" -- "$cur") );;
     restore|save|saveshow|saverm|is-saved)
                     COMPREPLY=( $(compgen -W "$(_module_savelist)" -- "$cur") );;
     rm|del|remove|unload|switch|swap)
@@ -116,7 +139,8 @@ _module() {
     unuse|is-used)  COMPREPLY=( $(IFS=: compgen -W "${MODULEPATH}" -- "$cur") );;
     use|-a|--append)   ;;               # let readline handle the completion
     display|help|show|test|whatis|is-loaded|is-avail|info-loaded)
-                    COMPREPLY=( $(compgen -W "$(_module_avail)" -- "$cur") );;
+                    _module_comgen_words_and_files "$(_module_avail $cur)" "$cur";;
+    config|--reset) COMPREPLY=( $(compgen -W "$config_opts" -- "$cur") );;
     -h|--help|-V|--version|aliases|apropos|keyword|purge|refresh|reload|search|source)
                     ;;
     append-path|prepend-path)

@@ -50,6 +50,9 @@ proc default_modulecmd {} {
 	    set MODULECMD "../modulecmd"
 	} elseif [file exists ./modulecmd] then {
 	    set MODULECMD "./modulecmd"
+	# use test-specific modulecmd.tcl script if it exists
+	} elseif [file exists "./modulecmd-test.tcl"] then {
+	  set MODULECMD "./modulecmd-test.tcl"
 	# check for modulecmd.tcl before guessing from path
 	# to give this flavor a chance to be found when modulecmd
 	# binary is also installed in system default paths
@@ -105,7 +108,7 @@ proc modulecmd_exit {} {
 # has to be installed in order to scan both 
 #
 
-proc modulecmd_xxx_ {command} {
+proc modulecmd_xxx_ {command {input noinput}} {
 	global MODULECMD
 	global TCLSH
 	global verbose
@@ -120,35 +123,28 @@ proc modulecmd_xxx_ {command} {
 	  unresolved "internal testsuite error: no module command specified"
 	}
 
-    # check if asked not to split passed command line
-    if {[string first "NOCMDSPLIT" $command] == 0} {
-        set nocmdsplit 1
-        set command [string range $command 10 end]
-    } else {
-        set nocmdsplit 0
-    }
-
-	default_shell 
+	default_shell
 	default_modulecmd
 	default_tclsh
 
+    set cmdlist [list exec $TCLSH $MODULECMD $shell]
+    # check if asked not to split passed command line
+    if {[string first "NOCMDSPLIT" $command] == 0} {
+        lappend cmdlist [string range $command 10 end]
+    } else {
+        eval lappend cmdlist [split $command { }]
+    }
+    lappend cmdlist 2> test321.err > test321.out
+    if {$input ne {noinput}} {
+        lappend cmdlist << $input
+    }
+
 	if { ! $no_verbose && $verbose > 1 } {
-		send_user "starting $TCLSH $MODULECMD $shell $command\n"
+        send_user "starting [lrange $cmdlist 1 end]\n"
 	}
 
-# this is why I hate Tcl ... you can never count on anything to act
-# in a consistent fashion from one version to the next.
-# This used to work until 8.4
-#   catch {set comp_output [eval exec $MODULECMD $shell [split $command { }]]
-#	} comp_error
-#
-# now need to capture the exit return code.
 	if [catch {
-        if {$nocmdsplit} {
-            set comp_output [exec $TCLSH $MODULECMD $shell $command 2> test321.err > test321.out ]
-        } else {
-            set comp_output [eval exec $TCLSH $MODULECMD $shell [split $command { }] 2> test321.err > test321.out ]
-        }
+        set comp_output [eval $cmdlist]
 	} ] {
 		set comp_exit [lindex $errorCode 2]
 	} else {
@@ -170,11 +166,11 @@ proc modulecmd_xxx_ {command} {
 	catch { file delete test321.out }
 }
 
-proc modulecmd_start {command} {
+proc modulecmd_start {command {input noinput}} {
 	global no_verbose
 
 	set no_verbose 0
-	modulecmd_xxx_ "$command"
+	modulecmd_xxx_ "$command" $input
 	unset no_verbose
 }
 

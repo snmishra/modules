@@ -34,6 +34,7 @@ set warn_msgs "WARNING"
 set prob_msgs "$messages:PROB:\[0-9\]+"
 set verb_msgs "$messages:VERB:\[0-9\]+"
 set moderr_msgs "Module $error_msgs"
+set info_msgs "INFO"
 
 # Used as a line seperator inside modules
 set modlin      "\[-\]+"
@@ -159,6 +160,14 @@ proc err_depref {mod} {
     return "$::warn_msgs: Reload of dependent $mod failed"
 }
 
+proc err_depreun {mod} {
+    return [err_depun $mod]
+}
+
+proc err_depreunf {mod} {
+    return [err_depunf $mod]
+}
+
 proc err_swoff {mod} {
     return "$::error_msgs: Unload of switched-off $mod failed"
 }
@@ -243,6 +252,11 @@ proc msg_reload {args} {
 }
 
 proc msg_top_load {mod unlist reqlolist deprelist args} {
+    lassign [mix_depre_depun_list $deprelist {}] deprelist depunlist
+
+    if {[llength $depunlist] > 0} {
+        lappend args "Unloading dependent: [join $depunlist]"
+    }
     if {[llength $unlist] > 0} {
         lappend args "Unloading conflict: [join $unlist]"
     }
@@ -256,6 +270,7 @@ proc msg_top_load {mod unlist reqlolist deprelist args} {
 }
 
 proc msg_top_unload {mod depunlist urequnlist deprelist args} {
+    lassign [mix_depre_depun_list $deprelist $depunlist] deprelist depunlist
     if {[llength $depunlist] > 0} {
         lappend args "Unloading dependent: [join $depunlist]"
     }
@@ -269,6 +284,8 @@ proc msg_top_unload {mod depunlist urequnlist deprelist args} {
 }
 
 proc msg_top_switch {old new depunlist urequnlist unlist reqlolist deprelist args} {
+    lassign [mix_depre_depun_list $deprelist $depunlist] deprelist depunlist
+
     if {[llength $depunlist] > 0} {
         lappend args "Unloading dependent: [join $depunlist]"
     }
@@ -302,6 +319,27 @@ proc msg_top_restore {coll target unlist lolist args} {
     append msg [eval msg_block_content $args]
 
     return $msg
+}
+
+proc mix_depre_depun_list {deprelist depunlist} {
+    # dependent reload unload phase appears with dependent unload (in actual unload order)
+    # if some dependent fail to unload, 1 unload list and 1 reload list could be passed
+    if {[llength $deprelist] == 2 && [llength [set depreun [lindex $deprelist 0]]] !=\
+        [llength [set deprelo [lindex $deprelist 1]]]} {
+        set depunlist [concat $depreun $depunlist]
+        set deprelist $deprelo
+    } else {
+        set depunlist [concat [lreverse $deprelist] $depunlist]
+    }
+    return [list $deprelist $depunlist]
+}
+
+# provide a lassign proc for Tcl8.4 and earlier
+if {[info commands lassign] eq ""} {
+   proc lassign {values args} {
+      uplevel 1 [list foreach $args [linsert $values end {}] break]
+      lrange $values [llength $args] end
+   }
 }
 
 # provide a lreverse proc for Tcl8.4 and earlier
@@ -380,6 +418,11 @@ proc siteconfig_isStderrTty {} {
     }]
     interp delete _siteconfig
     return $is_stderr_tty
+}
+
+# locate Modules Tcl extension library used during testsuite
+if {$install_libtclenvmodules eq {y}} {
+    catch {set tclextlib_file [glob lib/libtclenvmodules*]}
 }
 
 # check file permission capabilities

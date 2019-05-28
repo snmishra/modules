@@ -2,7 +2,7 @@
 	install-testsiteconfig-1 install-testmodulerc install-testetcrc \
 	install-testmodspath install-testmodspath-empty uninstall-testconfig \
 	uninstall dist dist-tar dist-gzip dist-bzip2 srpm clean distclean test \
-	testinstall instrument testcoverage
+	testinstall testsyntax
 
 # definitions for code coverage
 NAGELFAR_DLSRC1 := http://downloads.sourceforge.net/nagelfar/
@@ -11,10 +11,9 @@ NAGELFAR_RELEASE := nagelfar125
 NAGELFAR_DIST := $(NAGELFAR_RELEASE).tar.gz
 NAGELFAR_DISTSUM := 707e3c305437dce1f14103f0bd058fc9
 NAGELFAR := $(NAGELFAR_RELEASE)/nagelfar.tcl
-COVERAGE_SRCFILE := modulecmd.tcl
-COVERAGE_IFILE := $(COVERAGE_SRCFILE:.tcl=.tcl_i)
-COVERAGE_LOGFILE := $(COVERAGE_SRCFILE:.tcl=.tcl_log)
-COVERAGE_MFILE := $(COVERAGE_SRCFILE:.tcl=.tcl_m)
+
+# specific modulecmd script for test
+MODULECMDTEST := modulecmd-test.tcl
 
 # definitions for enhanced diff tool (to review test results)
 ICDIFF_DLSRC := https://raw.githubusercontent.com/jeffkaufman/icdiff/release-1.9.2/
@@ -29,12 +28,28 @@ ifneq ($(wildcard Makefile.inc),Makefile.inc)
 endif
 include Makefile.inc
 
-all: initdir modulecmd.tcl ChangeLog README \
-	contrib/scripts/add.modules contrib/scripts/modulecmd
+INSTALL_PREREQ := modulecmd.tcl ChangeLog README contrib/scripts/add.modules \
+	contrib/scripts/modulecmd
+TEST_PREREQ := $(MODULECMDTEST)
+
 ifeq ($(compatversion),y)
-all: $(COMPAT_DIR)/modulecmd$(EXEEXT) $(COMPAT_DIR)/ChangeLog
-else
+INSTALL_PREREQ += $(COMPAT_DIR)/modulecmd$(EXEEXT) $(COMPAT_DIR)/ChangeLog
+ifeq ($(wildcard $(COMPAT_DIR)),$(COMPAT_DIR))
+TEST_PREREQ += $(COMPAT_DIR)/modulecmd
 endif
+endif
+
+ifeq ($(libtclenvmodules),y)
+INSTALL_PREREQ += lib/libtclenvmodules$(SHLIB_SUFFIX)
+TEST_PREREQ += lib/libtclenvmodules$(SHLIB_SUFFIX)
+endif
+
+ifeq ($(COVERAGE),y)
+TEST_PREREQ += $(NAGELFAR)
+endif
+
+all: initdir $(INSTALL_PREREQ)
+
 # skip doc build if no sphinx-build
 ifeq ($(builddoc),y)
 all: pkgdoc
@@ -103,15 +118,40 @@ else
   setnotquarantinesupport :=
 endif
 
+ifeq ($(libtclenvmodules),y)
+  setlibtclenvmodules :=
+else
+  setlibtclenvmodules := \#
+endif
+
+ifeq ($(color),y)
+  setcolor := 1
+else
+  setcolor := 0
+endif
+
 ifeq ($(autohandling),y)
   setautohandling := 1
 else
   setautohandling := 0
 endif
 
+ifeq ($(availindepth),y)
+  setavailindepth := 1
+else
+  setavailindepth := 0
+endif
+
+ifeq ($(extrasiteconfig),y)
+  setextrasiteconfig := 1
+else
+  setextrasiteconfig := 0
+endif
+
 define translate-in-script
 sed -e 's|@prefix@|$(prefix)|g' \
 	-e 's|@baseprefix@|$(baseprefix)|g' \
+	-e 's|@libdir@|$(libdir)|g' \
 	-e 's|@libexecdir@|$(libexecdir)|g' \
 	-e 's|@initdir@|$(initdir)|g' \
 	-e 's|@etcdir@|$(etcdir)|g' \
@@ -121,10 +161,19 @@ sed -e 's|@prefix@|$(prefix)|g' \
 	-e 's|@TCLSH@|$(TCLSH)|g' \
 	-e 's|@pager@|$(pager)|g' \
 	-e 's|@pageropts@|$(pageropts)|g' \
+	-e 's|@color@|$(setcolor)|g' \
+	-e 's|@darkbgcolors@|$(darkbgcolors)|g' \
+	-e 's|@lightbgcolors@|$(lightbgcolors)|g' \
+	-e 's|@termbg@|$(termbg)|g' \
+	-e 's|@extrasiteconfig@|$(setextrasiteconfig)|g' \
+	-e 's|@unloadmatchorder@|$(unloadmatchorder)|g' \
 	-e 's|@autohandling@|$(setautohandling)|g' \
+	-e 's|@availindepth@|$(setavailindepth)|g' \
 	-e 's|@silentshdbgsupport@|$(setsilentshdbgsupport)|g' \
 	-e 's|@quarantinesupport@|$(setquarantinesupport)|g' \
 	-e 's|@notquarantinesupport@|$(setnotquarantinesupport)|g' \
+	-e 's|@libtclenvmodules@|$(setlibtclenvmodules)|g' \
+	-e 's|@SHLIB_SUFFIX@|$(SHLIB_SUFFIX)|g' \
 	-e 's|@VERSIONING@|$(setversioning)|g' \
 	-e 's|@NOTVERSIONING@|$(setnotversioning)|g' \
 	-e 's|@MODULES_RELEASE@|$(MODULES_RELEASE)|g' \
@@ -178,6 +227,10 @@ contrib/scripts/modulecmd: contrib/scripts/modulecmd.in
 $(COMPAT_DIR)/modulecmd$(EXEEXT) $(COMPAT_DIR)/ChangeLog:
 	$(MAKE) -C $(COMPAT_DIR) $(@F)
 
+# Tcl extension library-related rules
+lib/libtclenvmodules$(SHLIB_SUFFIX):
+	$(MAKE) -C lib $(@F)
+
 # example configs for test rules
 testsuite/example/.modulespath: testsuite/example/.modulespath.in
 	$(translate-in-script)
@@ -216,20 +269,20 @@ uninstall-testconfig:
 	rm -f $(DESTDIR)$(initdir)/.modulespath
 	$(MAKE) -C init uninstall-testconfig DESTDIR=$(DESTDIR)
 
-ifeq ($(compatversion),y)
-install: modulecmd.tcl ChangeLog README contrib/scripts/add.modules \
-	contrib/scripts/modulecmd $(COMPAT_DIR)/modulecmd$(EXEEXT) $(COMPAT_DIR)/ChangeLog
-else
-install: modulecmd.tcl ChangeLog README contrib/scripts/add.modules \
-	contrib/scripts/modulecmd
-endif
+install: $(INSTALL_PREREQ)
 	mkdir -p $(DESTDIR)$(libexecdir)
 	mkdir -p $(DESTDIR)$(bindir)
+	mkdir -p $(DESTDIR)$(etcdir)
 	cp modulecmd.tcl $(DESTDIR)$(libexecdir)/
 	chmod +x $(DESTDIR)$(libexecdir)/modulecmd.tcl
 ifeq ($(compatversion),y)
 	cp $(COMPAT_DIR)/modulecmd$(EXEEXT) $(DESTDIR)$(libexecdir)/modulecmd-compat$(EXEEXT)
 	chmod +x $(DESTDIR)$(libexecdir)/modulecmd-compat$(EXEEXT)
+endif
+ifeq ($(libtclenvmodules),y)
+	mkdir -p $(DESTDIR)$(libdir)
+	cp lib/libtclenvmodules$(SHLIB_SUFFIX) $(DESTDIR)$(libdir)/libtclenvmodules$(SHLIB_SUFFIX)
+	chmod +x $(DESTDIR)$(libdir)/libtclenvmodules$(SHLIB_SUFFIX)
 endif
 	cp contrib/envml $(DESTDIR)$(bindir)/
 	chmod +x $(DESTDIR)$(bindir)/envml
@@ -239,6 +292,9 @@ endif
 	chmod +x $(DESTDIR)$(bindir)/modulecmd
 	cp contrib/scripts/mkroot $(DESTDIR)$(bindir)/
 	chmod +x $(DESTDIR)$(bindir)/mkroot
+ifneq ($(wildcard $(DESTDIR)$(etcdir)/siteconfig.tcl),$(DESTDIR)$(etcdir)/siteconfig.tcl)
+	cp siteconfig.tcl $(DESTDIR)$(etcdir)/siteconfig.tcl
+endif
 ifeq ($(docinstall),y)
 	mkdir -p $(DESTDIR)$(docdir)
 	cp COPYING.GPLv2 $(DESTDIR)$(docdir)/
@@ -248,6 +304,14 @@ ifeq ($(compatversion),y)
 	cp $(COMPAT_DIR)/ChangeLog $(DESTDIR)$(docdir)/ChangeLog-compat
 	cp $(COMPAT_DIR)/NEWS $(DESTDIR)$(docdir)/NEWS-compat
 endif
+endif
+ifeq ($(vimaddons),y)
+	mkdir -p $(DESTDIR)$(vimdatadir)/ftdetect
+	mkdir -p $(DESTDIR)$(vimdatadir)/ftplugin
+	mkdir -p $(DESTDIR)$(vimdatadir)/syntax
+	cp  contrib/vim/ftdetect/modulefile.vim  $(DESTDIR)$(vimdatadir)/ftdetect
+	cp  contrib/vim/ftplugin/modulefile.vim  $(DESTDIR)$(vimdatadir)/ftplugin
+	cp  contrib/vim/syntax/modulefile.vim    $(DESTDIR)$(vimdatadir)/syntax
 endif
 	$(MAKE) -C init install DESTDIR=$(DESTDIR)
 ifeq ($(builddoc),y)
@@ -267,10 +331,22 @@ uninstall:
 ifeq ($(compatversion),y)
 	rm -f $(DESTDIR)$(libexecdir)/modulecmd-compat$(EXEEXT)
 endif
+ifeq ($(libtclenvmodules),y)
+	rm -f $(DESTDIR)$(libdir)/libtclenvmodules$(SHLIB_SUFFIX)
+endif
 	rm -f $(DESTDIR)$(bindir)/envml
 	rm -f $(DESTDIR)$(bindir)/add.modules
 	rm -f $(DESTDIR)$(bindir)/modulecmd
 	rm -f $(DESTDIR)$(bindir)/mkroot
+ifeq ($(vimaddons),y)
+	rm -f $(DESTDIR)$(vimdatadir)/ftdetect/modulefile.vim
+	rm -f $(DESTDIR)$(vimdatadir)/ftplugin/modulefile.vim
+	rm -f $(DESTDIR)$(vimdatadir)/syntax/modulefile.vim
+	-rmdir $(DESTDIR)$(vimdatadir)/ftdetect
+	-rmdir $(DESTDIR)$(vimdatadir)/ftplugin
+	-rmdir $(DESTDIR)$(vimdatadir)/syntax
+	-rmdir -p $(DESTDIR)$(vimdatadir)
+endif
 ifeq ($(docinstall),y)
 	rm -f $(addprefix $(DESTDIR)$(docdir)/,ChangeLog README COPYING.GPLv2)
 ifeq ($(compatversion),y)
@@ -285,6 +361,9 @@ ifeq ($(builddoc),y)
 	$(MAKE) -C doc uninstall DESTDIR=$(DESTDIR)
 endif
 	rmdir $(DESTDIR)$(libexecdir)
+ifeq ($(libtclenvmodules),y)
+	rmdir $(DESTDIR)$(libdir)
+endif
 	rmdir $(DESTDIR)$(bindir)
 	rmdir $(DESTDIR)$(datarootdir)
 	$(RMDIR_IGN_NON_EMPTY) $(DESTDIR)$(prefix) || true
@@ -297,10 +376,10 @@ dist-tar: ChangeLog README version.inc contrib/rpm/environment-modules.spec pkgd
 	cp doc/build/MIGRATING.txt  doc/build/INSTALL.txt doc/build/NEWS.txt \
 		doc/build/CONTRIBUTING.txt ./
 	tar -rf $(DIST_PREFIX).tar --transform 's,^,$(DIST_PREFIX)/,' \
-		ChangeLog README MIGRATING.txt INSTALL.txt NEWS.txt CONTRIBUTING.txt \
-		version.inc doc/build/MIGRATING.txt doc/build/diff_v3_v4.txt \
-		doc/build/INSTALL.txt doc/build/NEWS.txt doc/build/CONTRIBUTING.txt \
-		doc/build/module.1.in doc/build/modulefile.4 \
+		lib/configure lib/config.h.in ChangeLog README MIGRATING.txt INSTALL.txt \
+		NEWS.txt CONTRIBUTING.txt version.inc doc/build/MIGRATING.txt \
+		doc/build/diff_v3_v4.txt doc/build/INSTALL.txt doc/build/NEWS.txt \
+		doc/build/CONTRIBUTING.txt doc/build/module.1.in doc/build/modulefile.4 \
 		contrib/rpm/environment-modules.spec
 ifeq ($(compatversion) $(wildcard $(COMPAT_DIR)),y $(COMPAT_DIR))
 	$(MAKE) -C $(COMPAT_DIR) distdir
@@ -324,7 +403,7 @@ srpm: dist-bzip2
 
 clean:
 	rm -f *.log *.sum
-	rm -f $(COVERAGE_IFILE) $(COVERAGE_LOGFILE) $(COVERAGE_MFILE)
+	rm -f $(MODULECMDTEST)_i $(MODULECMDTEST)_log $(MODULECMDTEST)_m
 	rm -rf coverage
 ifeq ($(wildcard .git) $(wildcard contrib/gitlog2changelog.py),.git contrib/gitlog2changelog.py)
 	rm -f ChangeLog
@@ -346,6 +425,7 @@ ifeq ($(wildcard .git) $(wildcard CONTRIBUTING.rst),.git CONTRIBUTING.rst)
 endif
 	rm -f modulecmd.tcl
 	rm -f contrib/mtreview
+	rm -f $(MODULECMDTEST)
 	rm -f contrib/scripts/add.modules
 	rm -f contrib/scripts/modulecmd
 	rm -f testsuite/example/.modulespath testsuite/example/modulerc
@@ -360,7 +440,10 @@ ifeq ($(wildcard .git) $(wildcard version.inc.in),.git version.inc.in)
 	rm -f contrib/rpm/environment-modules.spec
 endif
 ifneq ($(wildcard $(COMPAT_DIR)/Makefile),)
-	$(MAKE) -C compat clean
+	$(MAKE) -C $(COMPAT_DIR) clean
+endif
+ifneq ($(wildcard lib/Makefile),)
+	$(MAKE) -C lib clean
 endif
 
 distclean: clean
@@ -374,22 +457,46 @@ ifeq ($(gitworktree),y)
 	git worktree prune
 endif
 endif
+ifneq ($(wildcard lib/Makefile),)
+	$(MAKE) -C lib distclean
+endif
 
+# prepare for code coverage run
+ifeq ($(COVERAGE),y)
+$(MODULECMDTEST): $(NAGELFAR)
+endif
+
+# make specific modulecmd script for test to check built extension lib
+# if coverage asked, instrument script and clear previous coverage log
+$(MODULECMDTEST): modulecmd.tcl
+	sed -e 's|$(libdir)|lib|' $< > $@
+ifeq ($(COVERAGE),y)
+	rm -f $(MODULECMDTEST)_log
+	$(NAGELFAR) -instrument $@
+endif
+
+# if coverage enabled, run tests on instrumented file to create coverage log
+ifeq ($(COVERAGE),y)
+export MODULECMD = $(MODULECMDTEST)_i
+endif
+
+# if coverage enabled create markup file for better read coverage result
+test: $(TEST_PREREQ)
 ifeq ($(compatversion) $(wildcard $(COMPAT_DIR)),y $(COMPAT_DIR))
-test: modulecmd.tcl $(COMPAT_DIR)/modulecmd
 	$(MAKE) -C $(COMPAT_DIR) test
-else
-test: modulecmd.tcl
 endif
 	TCLSH=$(TCLSH); export TCLSH; \
 	OBJDIR=`pwd -P`; export OBJDIR; \
 	TESTSUITEDIR=`cd testsuite;pwd -P`; export TESTSUITEDIR; \
-	runtest --srcdir $$TESTSUITEDIR --objdir $$OBJDIR $(RUNTESTFLAGS) --tool modules
+	runtest --srcdir $$TESTSUITEDIR --objdir $$OBJDIR $(RUNTESTFLAGS) --tool modules $(RUNTESTFILES)
+ifeq ($(COVERAGE),y)
+	$(NAGELFAR) -markup $(MODULECMDTEST)
+endif
 
 testinstall:
 	OBJDIR=`pwd -P`; export OBJDIR; \
 	TESTSUITEDIR=`cd testsuite;pwd -P`; export TESTSUITEDIR; \
-	runtest --srcdir $$TESTSUITEDIR --objdir $$OBJDIR $(RUNTESTFLAGS) --tool install
+	runtest --srcdir $$TESTSUITEDIR --objdir $$OBJDIR $(RUNTESTFLAGS) --tool install $(RUNTESTFILES)
 
 
 # install enhanced diff tool (to review test results)
@@ -408,23 +515,5 @@ $(NAGELFAR):
 	tar xzf $(NAGELFAR_DIST)
 	rm $(NAGELFAR_DIST)
 
-# instrument source file for code coverage
-%.tcl_i: %.tcl $(NAGELFAR)
-	$(NAGELFAR) -instrument $<
-
-# prepare for code coverage run and make sure coverage log is clear
-instrument: $(COVERAGE_IFILE)
-	rm -f $(COVERAGE_LOGFILE)
-
-# run tests on instrumented file to create coverage log
-$(COVERAGE_LOGFILE): $(COVERAGE_IFILE)
-	MODULECMD=./$< $(MAKE) test
-
-# create markup file for better read coverage result
-%.tcl_m: %.tcl_log $(NAGELFAR)
-	$(NAGELFAR) -markup $*.tcl
-
-testcoverage: instrument $(COVERAGE_MFILE)
-
-testsyntax: $(NAGELFAR) $(COVERAGE_SRCFILE)
-	$(NAGELFAR) -len 78 $(COVERAGE_SRCFILE)
+testsyntax: $(MODULECMDTEST) $(NAGELFAR)
+	$(NAGELFAR) -len 78 $<

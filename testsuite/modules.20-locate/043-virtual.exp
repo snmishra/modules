@@ -20,6 +20,9 @@
 #
 ##############################################################################
 
+# ensure avail tests are made using in depth mode
+setenv_var MODULES_AVAIL_INDEPTH 1
+
 set datetime_re "\[0-9\/]{10} \[0-9:]{8}"
 
 set modsym_1 "loc_virt1/1.0"
@@ -305,30 +308,31 @@ testouterr_cmd "sh" "switch $module_3" $ans ""
 set env(testsuite) $module_2
 setenv_loaded_module [list $module_1 $module_2] [list $modulefile_1 $modulefile_2]
 
-set ans [list]
-lappend ans [list set _LMFILES__modshare "$modulefile_1:1"]
-lappend ans [list set LOADEDMODULES_modshare "$module_2:1"]
-lappend ans [list set _LMFILES_ $modulefile_1]
-lappend ans [list set LOADEDMODULES "$module_2"]
-lappend ans [list unset testsuite]
+set ansfirst [list]
+lappend ansfirst [list set _LMFILES__modshare "$modulefile_1:1"]
+lappend ansfirst [list set LOADEDMODULES_modshare "$module_2:1"]
+lappend ansfirst [list set _LMFILES_ $modulefile_1]
+lappend ansfirst [list set LOADEDMODULES "$module_2"]
+lappend ansfirst [list unset testsuite]
 
-testouterr_cmd "sh" "unload $module_1" $ans ""
+testouterr_cmd "sh" "unload $module_1" $ansfirst ""
 
-set ans [list]
-lappend ans [list set _LMFILES__modshare "$modulefile_1:1"]
-lappend ans [list set LOADEDMODULES_modshare "$module_1:1"]
-lappend ans [list set _LMFILES_ $modulefile_1]
-lappend ans [list set LOADEDMODULES "$module_1"]
-lappend ans [list unset testsuite]
+set anslast [list]
+lappend anslast [list set _LMFILES__modshare "$modulefile_1:1"]
+lappend anslast [list set LOADEDMODULES_modshare "$module_1:1"]
+lappend anslast [list set _LMFILES_ $modulefile_1]
+lappend anslast [list set LOADEDMODULES "$module_1"]
+lappend anslast [list unset testsuite]
 
-testouterr_cmd "sh" "unload $module_2" $ans ""
-testouterr_cmd "sh" "unload loc_virt1" $ans ""
+testouterr_cmd sh "unload $module_2" $anslast {}
+testouterr_cmd sh {unload loc_virt1} [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
 
 # unload with full path name, but it does not exist as it is virtual
 testouterr_cmd "sh" "unload $modpath/$module_2" OK ""
 
-# unload by target file name, lastly loaded using this target file will be unloaded
-testouterr_cmd "sh" "unload $modulefile_1" $ans ""
+# unload by target file name, lastly or firstly loaded using this target file will be unloaded
+# depending on unload_match_order chosen behavior
+testouterr_cmd sh "unload $modulefile_1" [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
 
 
 # setup environment for more even more complex load/unload tests with same
@@ -340,7 +344,7 @@ setenv_loaded_module [list $module_4 $modulefile_4 $module_1 $module_reg $module
 
 # list tests
 testouterr_cmd "sh" "list -t" "" "$cur_loaded\n$module_4\n$modulefile_4\n$module_1\n$module_reg\n$module_3"
-testouterr_cmd_re "sh" "list -l" "" "$listh_long\n$cur_loaded\n$module_4\\s+$datetime_re\n$modulefilere_4\\s+$datetime_re\n$module_1\\s+$datetime_re\n$module_reg\\s+$datetime_re\n$module_3\\s+$datetime_re"
+testouterr_cmd_re "sh" "list -l" "" "$listh_long\n$cur_loaded\n$module_4\\s*$datetime_re\n$modulefilere_4\\s*$datetime_re\n$module_1\\s*$datetime_re\n$module_reg\\s*$datetime_re\n$module_3\\s*$datetime_re"
 
 # info-loaded tests
 set ans [list]
@@ -367,17 +371,17 @@ testouterr_cmd "sh" "load $module_4" "OK" ""
 testouterr_cmd "sh" "load loc_virt1" "OK" ""
 
 # unload tests
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$modulefile_4:$module_1:$module_reg:$module_3"]
-lappend ans [list setpath _LMFILES_ "$modulefile_4:$modulefile_1:$modulefile_reg:$modulefile_4"]
-testouterr_cmd_re "sh" "unload $module_4" $ans ""
+set ansfirst [list]
+lappend ansfirst [list unset testsuite]
+lappend ansfirst [list setpath LOADEDMODULES "$modulefile_4:$module_1:$module_reg:$module_3"]
+lappend ansfirst [list setpath _LMFILES_ "$modulefile_4:$modulefile_1:$modulefile_reg:$modulefile_4"]
+testouterr_cmd_re sh "unload $module_4" $ansfirst {}
 
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$module_4:$modulefile_4:$module_1:$module_reg"]
-lappend ans [list setpath _LMFILES_ "$modulefile_4:$modulefile_4:$modulefile_1:$modulefile_reg"]
-testouterr_cmd_re "sh" "unload loc_virt1" $ans ""
+set anslast [list]
+lappend anslast [list unset testsuite]
+lappend anslast [list setpath LOADEDMODULES "$module_4:$modulefile_4:$module_1:$module_reg"]
+lappend anslast [list setpath _LMFILES_ "$modulefile_4:$modulefile_4:$modulefile_1:$modulefile_reg"]
+testouterr_cmd_re sh {unload loc_virt1} [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
 
 # switch tests
 set ans [list]
@@ -392,11 +396,15 @@ lappend ans [list setpath LOADEDMODULES "$module_4:$modulefile_4:$module_reg:$mo
 lappend ans [list setpath _LMFILES_ "$modulefile_4:$modulefile_4:$modulefile_reg:$modulefile_4"]
 testouterr_cmd_re "sh" "switch $module_1 $module_4" $ans ""
 
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$module_4:$modulefile_4:$module_1:$module_reg"]
-lappend ans [list setpath _LMFILES_ "$modulefile_4:$modulefile_4:$modulefile_1:$modulefile_reg"]
-testouterr_cmd_re "sh" "switch loc_virt1 $module_reg" $ans ""
+set ansfirst [list]
+lappend ansfirst [list unset testsuite]
+lappend ansfirst [list setpath LOADEDMODULES "$modulefile_4:$module_1:$module_reg:$module_3"]
+lappend ansfirst [list setpath _LMFILES_ "$modulefile_4:$modulefile_1:$modulefile_reg:$modulefile_4"]
+set anslast [list]
+lappend anslast [list unset testsuite]
+lappend anslast [list setpath LOADEDMODULES "$module_4:$modulefile_4:$module_1:$module_reg"]
+lappend anslast [list setpath _LMFILES_ "$modulefile_4:$modulefile_4:$modulefile_1:$modulefile_reg"]
+testouterr_cmd_re sh "switch loc_virt1 $module_reg" [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
 
 set ans [list]
 lappend ans [list set testsuite $module_4]
@@ -494,21 +502,21 @@ testouterr_cmd_re "sh" "switch $modulefile_11" $ans ""
 set env(testsuite) $module_12
 setenv_loaded_module [list $module_11 $module_12] [list $modulefile_11 $modulefile_12]
 
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$module_12"]
-lappend ans [list setpath _LMFILES_ "$modulefile_12"]
-testouterr_cmd_re "sh" "unload $module_11" $ans ""
+set ansfirst [list]
+lappend ansfirst [list unset testsuite]
+lappend ansfirst [list setpath LOADEDMODULES "$module_12"]
+lappend ansfirst [list setpath _LMFILES_ "$modulefile_12"]
+testouterr_cmd_re sh "unload $module_11" $ansfirst {}
 
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$module_11"]
-lappend ans [list setpath _LMFILES_ "$modulefile_11"]
-testouterr_cmd_re "sh" "unload $module_12" $ans ""
-testouterr_cmd_re "sh" "unload $modulefile_11" $ans ""
-testouterr_cmd_re "sh" "unload loc_virt2" $ans ""
+set anslast [list]
+lappend anslast [list unset testsuite]
+lappend anslast [list setpath LOADEDMODULES "$module_11"]
+lappend anslast [list setpath _LMFILES_ "$modulefile_11"]
+testouterr_cmd_re sh "unload $module_12" $anslast {}
+testouterr_cmd_re sh "unload $modulefile_11" [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
+testouterr_cmd_re sh {unload loc_virt2} [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
 
-testouterr_cmd_re "sh" "switch $modulefile_11" $ans ""
+testouterr_cmd_re sh "switch $modulefile_11" $anslast {}
 
 set ans [list]
 lappend ans [list set testsuite $module_11]
@@ -526,25 +534,21 @@ testouterr_cmd_re "sh" "switch $module_12" $ans ""
 set env(testsuite) $module_11
 setenv_loaded_module [list $module_12 $module_11] [list $modulefile_12 $modulefile_11]
 
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$module_12"]
-lappend ans [list setpath _LMFILES_ "$modulefile_12"]
-testouterr_cmd_re "sh" "unload $module_11" $ans ""
+set anslast [list]
+lappend anslast [list unset testsuite]
+lappend anslast [list setpath LOADEDMODULES $module_12]
+lappend anslast [list setpath _LMFILES_ $modulefile_12]
+testouterr_cmd_re sh "unload $module_11" $anslast {}
 
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$module_11"]
-lappend ans [list setpath _LMFILES_ "$modulefile_11"]
-testouterr_cmd_re "sh" "unload $module_12" $ans ""
+set ansfirst [list]
+lappend ansfirst [list unset testsuite]
+lappend ansfirst [list setpath LOADEDMODULES $module_11]
+lappend ansfirst [list setpath _LMFILES_ $modulefile_11]
+testouterr_cmd_re sh "unload $module_12" $ansfirst {}
 
-# remove lastly loaded match
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$module_12"]
-lappend ans [list setpath _LMFILES_ "$modulefile_12"]
-testouterr_cmd_re "sh" "unload $modulefile_11" $ans ""
-testouterr_cmd_re "sh" "unload loc_virt2" $ans ""
+# remove lastly or firstly loaded match depending on unload_match_order setting
+testouterr_cmd_re sh "unload $modulefile_11" [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
+testouterr_cmd_re sh {unload loc_virt2} [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
 
 set ans [list]
 lappend ans [list unset testsuite]
@@ -568,21 +572,21 @@ testouterr_cmd_re "sh" "switch $module_12" $ans ""
 set env(testsuite) $module_12
 setenv_loaded_module [list $module_11 $modulefile_12] [list $modulefile_11 $modulefile_12]
 
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$modulefile_12"]
-lappend ans [list setpath _LMFILES_ "$modulefile_12"]
-testouterr_cmd_re "sh" "unload $module_11" $ans ""
+set ansfirst [list]
+lappend ansfirst [list unset testsuite]
+lappend ansfirst [list setpath LOADEDMODULES $modulefile_12]
+lappend ansfirst [list setpath _LMFILES_ $modulefile_12]
+testouterr_cmd_re sh "unload $module_11" $ansfirst {}
 
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$module_11"]
-lappend ans [list setpath _LMFILES_ "$modulefile_11"]
-testouterr_cmd_re "sh" "unload $module_12" $ans ""
-testouterr_cmd_re "sh" "unload $modulefile_11" $ans ""
-testouterr_cmd_re "sh" "unload loc_virt2" $ans ""
+set anslast [list]
+lappend anslast [list unset testsuite]
+lappend anslast [list setpath LOADEDMODULES $module_11]
+lappend anslast [list setpath _LMFILES_ $modulefile_11]
+testouterr_cmd_re sh "unload $module_12" $anslast {}
+testouterr_cmd_re sh "unload $modulefile_11" [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
+testouterr_cmd_re sh {unload loc_virt2} [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
 
-testouterr_cmd_re "sh" "switch $modulefile_11" $ans ""
+testouterr_cmd_re sh "switch $modulefile_11" $anslast {}
 
 set ans [list]
 lappend ans [list set testsuite $module_11]
@@ -612,19 +616,20 @@ lappend ans [list setpath LOADEDMODULES "$module_11"]
 lappend ans [list setpath _LMFILES_ "$modulefile_11"]
 testouterr_cmd_re "sh" "unload $module_12" $ans ""
 
-# remove lastly loaded match
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$modulefile_12"]
-lappend ans [list setpath _LMFILES_ "$modulefile_12"]
-testouterr_cmd_re "sh" "unload $modulefile_11" $ans ""
-testouterr_cmd_re "sh" "unload loc_virt2" $ans ""
+# remove lastly or firstly loaded match depending on unload_match_order setting
+set anslast [list]
+lappend anslast [list unset testsuite]
+lappend anslast [list setpath LOADEDMODULES $modulefile_12]
+lappend anslast [list setpath _LMFILES_ $modulefile_12]
+set ansfirst [list]
+lappend ansfirst [list unset testsuite]
+lappend ansfirst [list setpath LOADEDMODULES $module_11]
+lappend ansfirst [list setpath _LMFILES_ $modulefile_11]
 
-set ans [list]
-lappend ans [list unset testsuite]
-lappend ans [list setpath LOADEDMODULES "$module_11"]
-lappend ans [list setpath _LMFILES_ "$modulefile_11"]
-testouterr_cmd_re "sh" "switch $modulefile_11" $ans ""
+testouterr_cmd_re sh "unload $modulefile_11" [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
+testouterr_cmd_re sh {unload loc_virt2} [expr {$install_unloadmatchorder eq {returnlast} ? $anslast : $ansfirst}] {}
+
+testouterr_cmd_re sh "switch $modulefile_11" $ansfirst {}
 
 set ans [list]
 lappend ans [list set testsuite $module_11]
@@ -647,6 +652,7 @@ testouterr_cmd_re "sh" "switch $module_12" $ans ""
 unset env(testsuite)
 unsetenv_loaded_module
 setenv_path_var MODULEPATH $modpath
+unsetenv_var MODULES_AVAIL_INDEPTH
 
 unset datetime_re
 
@@ -689,6 +695,8 @@ unset module_reg
 unset modulefile_reg
 
 unset ans
+unset ansfirst
+unset anslast
 unset ans_paths
 
 unset i

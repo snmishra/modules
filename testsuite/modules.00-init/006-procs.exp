@@ -219,7 +219,7 @@ proc shell_val {test_shell val {re_mode 0}} {
     if {$val ne "(.*)"} {
         switch -- $test_shell {
             {sh} - {bash} - {ksh} - {zsh} - {csh} - {tcsh} - {fish} {
-                set val [regsub -all {([\\"'$|{}`* ()!&])} $val {\\\1}]
+                set val [regsub -all {([\\"'$|{}`*? ()!&])} $val {\\\1}]
             }
             {lisp} - {cmake} {
                 set val [regsub -all {(["])} $val {\\\1}]
@@ -566,14 +566,6 @@ proc shell_unxres {test_shell var {re_mode 0}} {
 }
 
 
-# provide a lassign proc for Tcl8.4 and earlier
-if {[info commands lassign] eq ""} {
-   proc lassign {values args} {
-      uplevel 1 [list foreach $args [linsert $values end {}] break]
-      lrange $values [llength $args] end
-   }
-}
-
 proc shell_out {test_shell out_list {re_mode 0}} {
     set answer_list {}
     set fixed_list {}
@@ -780,7 +772,7 @@ proc is_shell_out_list {answer} {
 # Test subprocedures
 #
 
-proc _test_sub {test_shell cmd} {
+proc _test_sub {test_shell cmd {input noinput}} {
 	global comp_output
 	global comp_error
 	global comp_exit
@@ -788,7 +780,11 @@ proc _test_sub {test_shell cmd} {
 	global verbose
 
 	if { $verbose > 0 } {
-		send_user "   ...  Testing 'modulecmd $test_shell $cmd'\n"
+        set cmdreport "modulecmd $test_shell $cmd"
+        if {$input ne {noinput}} {
+            append cmdreport " << $input"
+        }
+		send_user "   ...  Testing '$cmdreport'\n"
 	}
 	set comp_output ""
 	set comp_error ""
@@ -799,7 +795,7 @@ proc _test_sub {test_shell cmd} {
 	}
 
 	set shell $test_shell
-	modulecmd_start "$cmd"
+	modulecmd_start "$cmd" $input
 
 	if { $verbose > 1 } {
 		set ol [string length $comp_output]
@@ -1037,6 +1033,25 @@ proc testerr_cmd {test_shell cmd answer} {
         _test_sub $test_shell "$cmd"
         if { [ _test_err $test_shell "$cmd" "$answer" ] } {
             _test_ok $test_shell "$cmd"
+        }
+    }
+}
+
+#
+# Test procedure for full text matching with the stderr/stdout and text passed to stdin
+#
+
+proc testinouterr_cmd {test_shell cmd input answer anserr} {
+    if {$test_shell eq "ALL"} {
+        global supported_shells
+        foreach shell $supported_shells {
+            testinouterr_cmd $shell $cmd $input $answer $anserr
+        }
+    } else {
+        _test_sub $test_shell "$cmd" $input
+        if { [ _test_out $test_shell "$cmd << $input" "$answer" ]
+        &&   [ _test_err $test_shell "$cmd << $input" "$anserr" ] } {
+            _test_ok $test_shell "$cmd << $input"
         }
     }
 }

@@ -25,20 +25,23 @@ the tools to be found on your system:
 * sed
 * runtest
 
-When also installing the bundled compatibility version of Modules (enabled
-by default), these additional tools are needed:
+When also installing Modules Tcl extension library or the bundled
+compatibility version of Modules (both enabled by default), these additional
+tools are needed:
 
-* autoconf
-* automake
-* autopoint
 * grep
 * gcc
 * tcl-devel >= 8.4
 
 When installing from a distribution tarball, documentation is pre-built and
-does not require additional software. When installing from a clone of the git
-repository, document has to be built and the following tools are required:
+scripts to configure Modules Tcl extension library and compatibility version
+builds are already generated. Thus no additional software is required. When
+installing from a clone of the git repository, documentation and scripts to
+prepare for compilation have to be built and the following tools are required:
 
+* autoconf
+* automake
+* autopoint
 * sphinx >= 1.0
 
 
@@ -63,8 +66,9 @@ Some explanation, step by step:
    enable in the initialization scripts (see `Build and installation options`_
    section below for a complete overview of the available options)
 
-3. Type ``make`` to adapt scripts to the configuration, build compatibility
-   version if enabled and build documentation if working from git repository.
+3. Type ``make`` to adapt scripts to the configuration, build Tcl extension
+   library and compatibility version if enabled and build documentation if
+   working from git repository.
 
 4. Optionally, type ``make test`` to run the test suite.
 
@@ -179,6 +183,8 @@ is displayed within brakets):
 --prefix=PREFIX       Installation root directory [``/usr/local/Modules``]
 --bindir=DIR          Directory for executables reachable by users
                       [``PREFIX/bin``]
+--libdir=DIR          Directory for object code libraries like
+                      libtclenvmodules.so [``PREFIX/lib``]
 --libexecdir=DIR      Directory for executables called by other executables
                       like modulecmd.tcl [``PREFIX/libexec``]
 --etcdir=DIR          Directory for the executable configuration scripts
@@ -191,7 +197,9 @@ is displayed within brakets):
 --docdir=DIR          Directory to host documentation other than man
                       pages like README, license file, etc
                       [``DATAROOTDIR/doc``]
---modulefilesdir=DIR  Directory or main modulefiles also called system
+--vimdatadir=DIR      Directory to host Vim addon files
+                      [``DATAROOTDIR/vim/vimfiles``]
+--modulefilesdir=DIR  Directory of main modulefiles also called system
                       modulefiles [``PREFIX/modulefiles``]
 
 Optional Features (the default for each option is displayed within
@@ -225,6 +233,8 @@ instance ``--disable-set-manpath``):
                       case of installation process handled via a package
                       manager which handles by itself the installation of
                       this kind of documents. (default=yes)
+--enable-vim-addons   Install the Vim addon files in the Vim addons directory
+                      defined with the ``--vimdatadir`` option. (default=yes)
 --enable-example-modulefiles
                       Install some modulefiles provided as example in the
                       system modulefiles directory defined with the
@@ -236,6 +246,10 @@ instance ``--disable-set-manpath``):
                       script between the two installed version of Modules (by
                       setting-up the ``switchml`` shell function or alias).
                       (default=yes)
+--enable-libtclenvmodules
+                      Build and install the Modules Tcl extension library
+                      which provides optimized Tcl commands for the
+                      modulecmd.tcl script.
 --enable-versioning   Append Modules version to installation prefix and deploy
                       a ``versions`` modulepath shared between all versioning
                       enabled Modules installation. A modulefile corresponding
@@ -255,6 +269,20 @@ instance ``--disable-set-manpath``):
                       modulefiles handling actions, like loading the
                       pre-requisites of a modulefile when loading this
                       modulefile. (default=no)
+--enable-avail-indepth
+                      When performing an ``avail`` sub-command, include in
+                      search results the matching modulefiles and directories
+                      and recursively the modulefiles and directories
+                      contained in these matching directories when enabled or
+                      limit search results to the matching modulefiles and
+                      directories found at the depth level expressed by the
+                      search query if disabled. (default=yes)
+--enable-color        Control if output should be colored by default or not.
+                      A value of ``yes`` equals to the ``auto`` color mode.
+                      ``no`` equals to the ``never`` color mode. (default=no)
+--enable-extra-siteconfig
+                      Allow the addition a site-specific configuration script
+                      controlled with an environment variable. (default=yes)
 
 Optional Packages (the default for each option is displayed within
 parenthesis, to disable an option replace ``with`` by ``without`` for
@@ -273,6 +301,37 @@ instance ``--without-modulepath``):
 --with-pager-opts=OPTLIST
                       Settings to apply to default pager program
                       (default=\ ``-eFKRX``)
+--with-dark-background-colors=SGRLIST
+                      Default color set to apply if terminal background color
+                      is defined to ``dark``. SGRLIST follows the same syntax
+                      than used in ``LS_COLORS``. Each element in SGRLIST is
+                      an output item associated to a Select Graphic Rendition
+                      (SGR) code. Elements in SGRLIST are separated by ``:``.
+                      Output items are designated by keys. Items able to be
+                      colorized are: highlighted element (``hi``), debug
+                      information (``db``), tag separator (``se``); Error
+                      (``er``), warning (``wa``), module error (``me``) and
+                      info (``in``) message prefixes; Modulepath (``mp``),
+                      directory (``di``), module alias (``al``), module
+                      symbolic version (``sy``) and module ``default`` version
+                      (``de``). For a complete SGR code reference, see
+                      https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters.
+                      (default=\ ``hi=1:db=2:se=2:er=91:wa=93:me=95:in=94:mp=1;94:di=94:al=96:sy=95:de=4:cm=92``)
+--with-light-background-colors=SGRLIST
+                      Default color set to apply if terminal background color
+                      is defined to ``light``. Expect the same syntax than
+                      described for ``--with-dark-background-colors``.
+                      (default=\ ``hi=1:db=2:se=2:er=31:wa=33:me=35:in=34:mp=1;34:di=34:al=36:sy=35:de=4:cm=32``)
+--with-terminal-background=VALUE
+                      The terminal background color that determines the color
+                      set to apply by default between the ``dark`` background
+                      colors or the ``light`` background colors
+                      (default=\ ``dark``)
+--with-unload-match-order=VALUE
+                      When unloading a module if multiple loaded modules match
+                      the request, unload module loaded first
+                      (``returnfirst``) or module loaded last (``returnlast``)
+                      (default=\ ``returnlast``)
 --with-modulepath=PATHLIST
                       Default path list to setup as the default modulepaths.
                       Each path in this list should be separated by ``:``.
@@ -296,3 +355,12 @@ instance ``--without-modulepath``):
                       environment (each variable should be separated by space
                       character). A value can eventually be set to a
                       quarantine variable instead of emptying it. (default=no)
+--with-tcl            Directory containing the Tcl configuration script
+                      ``tclConfig.sh``. Useful to compile Modules
+                      compatibility version or Modules Tcl extension library
+                      if this file cannot be automatically found in default
+                      locations.
+--with-tclinclude     Directory containing the Tcl header files. Useful to
+                      compile Modules compatibility version or Modules Tcl
+                      extension library if these headers cannot be
+                      automatically found in default locations.

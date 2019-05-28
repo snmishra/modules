@@ -4,6 +4,7 @@ set install_bindir "@bindir@"
 set install_mandir "@mandir@"
 set install_etcdir "@etcdir@"
 set install_initdir "@initdir@"
+set install_libdir "@libdir@"
 set install_libexecdir "@libexecdir@"
 set install_modulefilesdir "@modulefilesdir@"
 
@@ -20,6 +21,9 @@ set install_quarantinevars "@quarantinevars@"
 
 set install_compatversion "@compatversion@"
 
+set install_libtclenvmodules "@libtclenvmodules@"
+set install_shlib_suffix "@SHLIB_SUFFIX@"
+
 set install_setmanpath "@setmanpath@"
 set install_setbinpath "@setbinpath@"
 set install_examplemodulefiles "@examplemodulefiles@"
@@ -29,7 +33,18 @@ set install_builddoc "@builddoc@"
 set install_pager "@pager@"
 set install_pageropts "@pageropts@"
 
+set install_color "@color@"
+set install_darkbgcolors "@darkbgcolors@"
+set install_lightbgcolors "@lightbgcolors@"
+set install_termbg "@termbg@"
+
 set install_autohandling "@autohandling@"
+
+set install_availindepth "@availindepth@"
+
+set install_extrasiteconfig "@extrasiteconfig@"
+
+set install_unloadmatchorder "@unloadmatchorder@"
 
 # command location
 set install_tclsh "@TCLSH@"

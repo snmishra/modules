@@ -102,10 +102,13 @@ Bourne Shell (sh) (and derivatives) with **autoinit** sub-command:
 Modulecmd startup
 ^^^^^^^^^^^^^^^^^
 
-Upon invocation **modulecmd.tcl** sources if it exists a site-specific
-configuration script located in |emph etcdir|\ */siteconfig.tcl*. This Tcl
-script enables to supersede any global variable or procedure definition of
-**modulecmd.tcl**.
+Upon invocation **modulecmd.tcl** sources a site-specific configuration
+script if it exists. The location for this script is
+|emph etcdir|\ */siteconfig.tcl*. An additional siteconfig script may be
+specified with the *$MODULES_SITECONFIG* environment variable, if allowed by
+**modulecmd.tcl** configuration, and will be loaded if it exists after
+|emph etcdir|\ */siteconfig.tcl*. Siteconfig is a Tcl script that enables to
+supersede any global variable or procedure definition of **modulecmd.tcl**.
 
 Afterward, **modulecmd.tcl** sources rc files which contain global,
 user and *modulefile* specific setups. These files are interpreted as
@@ -156,6 +159,11 @@ switches are accepted:
 
  Do not pipe message output into a pager.
 
+**--color**\[=\ *WHEN*\]
+
+ Colorize the output. *WHEN* defaults to *always* or can be *never* or *auto*.
+ See also **MODULES_COLOR** section.
+
 **--auto**
 
  On **load**, **unload** and **switch** sub-commands, enable automated module
@@ -174,6 +182,8 @@ switches are accepted:
  even if it comes in conflict with another loaded *modulefile* or that a
  *modulefile* will be unloaded even if it is required as a prereq by another
  *modulefile*.
+
+ On **clear** sub-command, skip the confirmation dialog and proceed.
 
 **--terse**, **-t**
 
@@ -195,6 +205,18 @@ switches are accepted:
  On **avail** sub-command, display only the highest numerically sorted
  version of each module name (see Locating Modulefiles section in the
  :ref:`modulefile(4)` man page).
+
+**--indepth**
+
+ On **avail** sub-command, include in search results the matching modulefiles
+ and directories and recursively the modulefiles and directories contained in
+ these matching directories.
+
+**--no-indepth**
+
+ On **avail** sub-command, limit search results to the matching modulefiles
+ and directories found at the depth level expressed by the search query. Thus
+ modulefiles contained in directories part of the result are excluded.
 
 
 Module Sub-Commands
@@ -246,7 +268,7 @@ Module Sub-Commands
 
  List loaded modules.
 
-**avail** [-d|-L] [-t|-l] [path...]
+**avail** [-d|-L] [-t|-l] [--indepth|--no-indepth] [path...]
 
  List all available *modulefiles* in the current **MODULEPATH**. All
  directories in the **MODULEPATH** are recursively searched for files
@@ -264,6 +286,14 @@ Module Sub-Commands
  aliases from *modulefiles* a **@** symbol is added within parenthesis
  next to their name. Aliases defined through a global or user specific
  module RC file are listed under the **global/user modulerc** section.
+
+ When colored output is enabled and a specific graphical rendition is defined
+ for module *default* version, the **default** symbol is omitted and instead
+ the defined graphical rendition is applied to the relative modulefile. When
+ colored output is enabled and a specific graphical rendition is defined for
+ module alias, the **@** symbol is omitted. The defined graphical rendition
+ applies to the module alias name. See **MODULES_COLOR** and
+ **MODULES_COLORS** sections for details on colored output.
 
 **aliases**
 
@@ -310,6 +340,12 @@ Module Sub-Commands
 **purge**
 
  Unload all loaded *modulefiles*.
+
+**clear** [-f]
+
+ Force the Modules package to believe that no modules are currently loaded. A
+ confirmation is requested if command-line switch *-f* (or *--force*) is not
+ passed. Typed confirmation should equal to *yes* or *y* in order to proceed.
 
 **source** modulefile...
 
@@ -521,6 +557,65 @@ Module Sub-Commands
  modules. See **module-info loaded** in the :ref:`modulefile(4)` man page for
  further explanation.
 
+**config** [--dump-state|name [value]|--reset name]
+
+ Gets or sets **modulecmd.tcl** options. Reports the currently set value of
+ passed option *name* or all existing options if no *name* passed. If a *name*
+ and a *value* are provided, the value of option *name* is set to *value*. If
+ command-line switch *--reset* is passed in addition to a *name*, overridden
+ overridden value for option *name* is cleared.
+
+ When a reported option value differs from default value a mention is added
+ to indicate whether the overridden value is coming from a command-line switch
+ (*cmd-line*) or from an environment variable (*env-var*).
+
+ If no value is currently set for an option *name*, the mention *<undef>* is
+ reported.
+
+ When command-line switch *--dump-state* is passed, current **modulecmd.tcl**
+ state and Modules-related environment variables are reported in addition to
+ currently set **modulecmd.tcl** options.
+
+ Existing option *names* are:
+
+ * allow_extra_siteconfig: additional site-specific configuration script
+   enablement
+ * auto_handling: automated module handling mode (defines environment variable
+   **MODULES_AUTO_HANDLING** when set)
+ * avail_indepth: **avail** sub-command in depth search mode (defines
+   **MODULES_AVAIL_INDEPTH**)
+ * avail_report_dir_sym: display symbolic versions targeting directories on
+   **avail** sub-command
+ * avail_report_mfile_sym: display symbolic versions targeting modulefiles on
+   **avail** sub-command
+ * collection_pin_version: register exact modulefile version in collection
+   (defines **MODULES_COLLECTION_PIN_VERSION**)
+ * collection_target: collection target which is valid for current system
+   (defines **MODULES_COLLECTION_TARGET**)
+ * color: colored output mode (defines **MODULES_COLOR**)
+ * colors: chosen colors to highlight output items (defines
+   **MODULES_COLORS**)
+ * contact: modulefile contact address (defines **MODULECONTACT**)
+ * extra_siteconfig: additional site-specific configuration script location
+   (defines **MODULES_SITECONFIG**)
+ * ignored_dirs: directories ignored when looking for modulefiles 
+ * pager: text viewer to paginate message output (defines **MODULES_PAGER**)
+ * rcfile: global run-command file location (defines **MODULERCFILE**)
+ * run_quarantine: environment variables to indirectly pass to
+   **modulecmd.tcl** (defines **MODULES_RUN_QUARANTINE**)
+ * silent_shell_debug: disablement of shell debugging property for the module
+   command (defines **MODULES_SILENT_SHELL_DEBUG**)
+ * siteconfig: primary site-specific configuration script location
+ * tcl_ext_lib: Modules Tcl extension library location
+ * term_background: terminal background color kind (defines
+   **MODULES_TERM_BACKGROUND**)
+ * unload_match_order: unload firstly loaded or lastly loaded module matching
+   request (defines **MODULES_UNLOAD_MATCH_ORDER**)
+
+The options *allow_extra_siteconfig*, *avail_report_dir_sym*,
+*avail_report_mfile_sym*, *ignored_dirs*, *siteconfig* and *tcl_ext_lib*
+cannot be altered.
+
 
 Modulefiles
 ^^^^^^^^^^^
@@ -569,6 +664,11 @@ ENVIRONMENT
 
  A colon separated list of all loaded *modulefiles*.
 
+**MODULECONTACT**
+
+ Email address to contact in case any issue occurs during the interpretation
+ of modulefiles.
+
 **MODULEPATH**
 
  The path that the **module** command searches when looking for
@@ -583,6 +683,11 @@ ENVIRONMENT
  corresponding value by **module** command each time it looks at the
  **MODULEPATH** value. If an environment variable referred in a path element
  is not defined, its reference is converted to an empty string.
+
+**MODULERCFILE**
+
+ The location of a global run-command file containing *modulefile* specific
+ setup. See `Modulecmd startup`_ section for detailed information.
 
 **MODULESHOME**
 
@@ -642,6 +747,24 @@ ENVIRONMENT
  overrides default configuration and **--auto**/**--no-auto** command line
  switches override every other ways to enable or disable this mode.
 
+**MODULES_AVAIL_INDEPTH**
+
+ If set to **1**, enable in depth search results for **avail** sub-command. If
+ set to **0** disable **avail** sub-command in depth mode. Other values are
+ ignored.
+
+ When in depth mode is enabled, modulefiles and directories contained in
+ directories matching search query are also included in search results. When
+ disabled these modulefiles and directories contained in matching directories
+ are excluded.
+
+ **avail** sub-command in depth mode enablement is defined in the following
+ order of preference: **--indepth**/**--no-indepth** command line switches,
+ then **MODULES_AVAIL_INDEPTH** environment variable, then the default set in
+ **modulecmd.tcl** script configuration. Which means **MODULES_AVAIL_INDEPTH**
+ overrides default configuration and **--indepth**/**--no-indepth** command
+ line switches override every other ways to enable or disable this mode.
+
 **MODULES_CMD**
 
  The location of the active module command script.
@@ -672,6 +795,53 @@ ENVIRONMENT
  For example, the **MODULES_COLLECTION_TARGET** variable may be set with
  results from commands like **lsb_release**, **hostname**, **dnsdomainname**,
  etc.
+
+**MODULES_COLOR**
+
+ Defines if output should be colored or not. Accepted values are *never*,
+ *auto* and *always*.
+
+ When color mode is set to *auto*, output is colored only if the standard
+ error output channel is attached to a terminal.
+
+ Colored output enablement is defined in the following order of preference:
+ **--color** command line switch, then **MODULES_COLOR** environment variable,
+ then the default set in **modulecmd.tcl** script configuration. Which means
+ **MODULES_COLOR** overrides default configuration and **--color** command
+ line switch overrides every other ways to enable or disable this mode.
+
+**MODULES_COLORS**
+
+ Specifies the colors and other attributes used to highlight various parts of
+ the output. Its value is a colon-separated list of output items associated to
+ a Select Graphic Rendition (SGR) code. It follows the same syntax than
+ **LS_COLORS**.
+
+ Output items are designated by keys. Items able to be colorized are:
+ highlighted element (*hi*), debug information (*db*), tag separator (*se*);
+ Error (*er*), warning (*wa*), module error (*me*) and info (*in*) message
+ prefixes; Modulepath (*mp*), directory (*di*), module alias (*al*), module
+ symbolic version (*sy*), module *default* version (*de*) and modulefile
+ command (*cm*).
+
+ See the Select Graphic Rendition (SGR) section in the documentation of the
+ text terminal that is used for permitted values and their meaning as
+ character attributes. These substring values are integers in decimal
+ representation and can be concatenated with semicolons. Modules takes care of
+ assembling the result into a complete SGR sequence (**\33[...m**). Common
+ values to concatenate include 1 for bold, 4 for underline, 30 to 37 for
+ foreground colors and 90 to 97 for 16-color mode foreground colors. See also
+ https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
+ for a complete SGR code reference.
+
+ No graphical rendition will be applied to an output item that could normaly
+ be colored but which is not defined in the color set. Thus if
+ **MODULES_COLORS** is defined empty, no output will be colored at all.
+
+ The color set is defined for Modules in the following order of preference:
+ **MODULES_COLORS** environment variable, then the default set in
+ **modulecmd.tcl** script configuration. Which means **MODULES_COLORS**
+ overrides default configuration.
 
 **MODULES_LMALTNAME**
 
@@ -765,6 +935,24 @@ ENVIRONMENT
  module shell initialization script. Only applies to Bourne Shell (sh) and its
  derivatives.
 
+**MODULES_SITECONFIG**
+
+ Location of a site-specific configuration script to source into
+ **modulecmd.tcl**. See also Modulecmd startup section.
+
+**MODULES_TERM_BACKGROUND**
+
+ Inform Modules of the terminal background color to determine if the color set
+ for dark background or the color set for light background should be used to
+ color output in case no specific color set is defined with the
+ **MODULES_COLORS** variable. Accepted values are **dark** and **light**.
+
+**MODULES_UNLOAD_MATCH_ORDER**
+
+ When a module unload request matches multiple loaded modules, unload firstly
+ loaded module or lastly loaded module. Accepted values are **returnfirst**
+ and **returnlast**.
+
 **MODULES_USE_COMPAT_VERSION**
 
  If set to **1** prior to Modules package initialization, enable
@@ -797,6 +985,12 @@ FILES
 |bold prefix|
 
  The **MODULESHOME** directory.
+
+|bold etcdir|\ **/siteconfig.tcl**
+
+ The site-specific configuration script of **modulecmd.tcl**. An additional
+ configuration script could be defined using the **MODULES_SITECONFIG**
+ environment variable.
 
 |bold prefix|\ **/etc/rc**
 
